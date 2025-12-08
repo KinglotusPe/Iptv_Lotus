@@ -31,6 +31,9 @@ jobs:
         # Critical step: creates android/ folder since we don't have it locally
         run: flutter create . --platforms android --project-name lotusplay
 
+      - name: Patch Android Manifest (HTTP Support)
+        run: python scripts/patch_manifest.py
+
       - name: Build APK
         run: flutter build apk --release --no-tree-shake-icons
 
