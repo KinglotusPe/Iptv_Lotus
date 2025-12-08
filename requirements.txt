@@ -1,3 +1,4 @@
 flet
 requests
 qrcode
+flet-video

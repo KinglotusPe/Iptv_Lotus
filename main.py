@@ -3,15 +3,17 @@ import qrcode
 import io
 import base64
 import requests
+import asyncio
 from client import XtreamClient
 from utils import parse_m3u, Channel
+import flet_video as fv
 
 # Configuration
 TELEGRAM_LINK = "https://t.me/LotusIptvFREE"
 APP_TITLE = "LotusPlay"
 DEVELOPER_TAG = "@Kinglotusp"
 
-def main(page: ft.Page):
+async def main(page: ft.Page):
     page.title = APP_TITLE
     page.theme_mode = ft.ThemeMode.DARK
     page.padding = 0
@@ -30,28 +32,35 @@ def main(page: ft.Page):
     current_channels = []
     current_filtered_channels = []
     
+    def async_bind(func, *args, **kwargs):
+        async def handler(e):
+            await func(*args, **kwargs)
+        return handler
+    
     # --- Account Manager ---
-    def get_accounts():
-        return page.client_storage.get("iptv_accounts") or []
+    # --- Account Manager ---
+    async def get_accounts():
+        return await page.client_storage.get_async("iptv_accounts") or []
 
-    def save_account(account_data):
-        accounts = get_accounts()
+    async def save_account(account_data):
+        accounts = await get_accounts()
         accounts.append(account_data)
-        page.client_storage.set("iptv_accounts", accounts)
+        await page.client_storage.set_async("iptv_accounts", accounts)
 
-    def delete_account(index):
-        accounts = get_accounts()
+    async def delete_account(index):
+        accounts = await get_accounts()
         if 0 <= index < len(accounts):
             accounts.pop(index)
-            page.client_storage.set("iptv_accounts", accounts)
-            show_profiles_view()
+            await page.client_storage.set_async("iptv_accounts", accounts)
+            await show_profiles_view()
 
     # --- Favorites Manager ---
-    def get_favorites():
-        return page.client_storage.get("iptv_favorites") or []
+    # --- Favorites Manager ---
+    async def get_favorites():
+        return await page.client_storage.get_async("iptv_favorites") or []
 
-    def toggle_favorite(channel_url, channel_name):
-        favs = get_favorites()
+    async def toggle_favorite(channel_url, channel_name):
+        favs = await get_favorites()
         # Simple check by URL (or name if URL is dynamic/temporary, but URL is safer for consistent streams)
         exists = next((f for f in favs if f["url"] == channel_url), None)
         
@@ -62,12 +71,12 @@ def main(page: ft.Page):
             favs.append({"url": channel_url, "name": channel_name})
             show_info(f"Añadido a favoritos: {channel_name}")
             
-        page.client_storage.set("iptv_favorites", favs)
+        await page.client_storage.set_async("iptv_favorites", favs)
         # Visual update will happen on list refresh or we can try to update icon directly 
         # For simplicity, we might reload current list view if "Favorites" category is verified
         
-    def is_favorite(channel_url):
-        favs = get_favorites()
+    async def is_favorite(channel_url):
+        favs = await get_favorites()
         return any(f["url"] == channel_url for f in favs)
 
     # --- Helper: Generate QR Code ---
@@ -101,28 +110,29 @@ def main(page: ft.Page):
          return url.split("?")[0]
 
     # --- Caching ---
-    def get_cached_channels(url):
+    # --- Caching ---
+    async def get_cached_channels(url):
         try:
-            data = page.client_storage.get(f"cache_{url}")
+            data = await page.client_storage.get_async(f"cache_{url}")
             if data:
                 return [Channel(**d) for d in data]
         except Exception as e:
             print(f"Cache error: {e}")
-            page.client_storage.remove(f"cache_{url}") # Clear corrupt cache
+            await page.client_storage.remove_async(f"cache_{url}") # Clear corrupt cache
         return None
 
-    def cache_channels(url, channels):
+    async def cache_channels(url, channels):
         # Convert objects to dicts for storage
         data = [c.__dict__ for c in channels]
-        page.client_storage.set(f"cache_{url}", data)
+        await page.client_storage.set_async(f"cache_{url}", data)
 
-    def load_channels(url, force_refresh=False):
+    async def load_channels(url, force_refresh=False):
         # Try Cache First
         if not force_refresh:
-            cached = get_cached_channels(url)
+            cached = await get_cached_channels(url)
             if cached:
                 show_info("Cargado desde caché (Rápido)")
-                show_channel_list(cached, url) # Pass URL to allows refresh later
+                await show_channel_list(cached, url) # Pass URL to allows refresh later
                 return
 
         try:
@@ -141,7 +151,8 @@ def main(page: ft.Page):
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             }
             
-            response = requests.get(url, timeout=15, headers=headers) # Reduced timeout to 15s to prevent freezing
+            # Async request
+            response = await asyncio.to_thread(requests.get, url, timeout=15, headers=headers)
             response.raise_for_status()
             
             channels = parse_m3u(response.text)
@@ -159,16 +170,16 @@ def main(page: ft.Page):
             except: pass
             
             # Fallback to cache if network fails?
-            cached = get_cached_channels(url)
+            cached = await get_cached_channels(url)
             if cached:
                 show_error(f"Error de red. Mostrando caché offline.")
-                show_channel_list(cached, url)
+                await show_channel_list(cached, url)
             else:
                 show_error(f"Error al cargar lista: {str(e)}")
 
 
 
-    def show_video_player(channel):
+    async def show_video_player(channel):
         page.clean()
         
         # Video Control
@@ -177,14 +188,13 @@ def main(page: ft.Page):
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         }
         
-        video_player = ft.Video(
-            playlist=[ft.VideoMedia(channel.url, http_headers=headers)],
-            playlist_mode=ft.PlaylistMode.SINGLE,
+        video_player = fv.Video(
+            playlist=[fv.VideoMedia(channel.url, http_headers=headers)],
+            playlist_mode=fv.PlaylistMode.SINGLE,
             fill_color="black",
             aspect_ratio=16/9,
             autoplay=True,
             volume=100,
-            filter_quality=ft.FilterQuality.HIGH,
             expand=True,
         )
         
@@ -193,7 +203,7 @@ def main(page: ft.Page):
                 ft.Container(
                     content=ft.Row([
                         # Best effort back button
-                        ft.IconButton("arrow_back", on_click=lambda _: show_channel_list(current_channels, channel.url.split("/get.php")[0] if "get.php" in channel.url else None)),
+                        ft.IconButton("arrow_back", on_click=async_bind(show_channel_list, current_channels, channel.url.split("/get.php")[0] if "get.php" in channel.url else None)),
                         ft.Text(channel.name, size=16, weight=ft.FontWeight.BOLD, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS, expand=True)
                     ]),
                     padding=10,
@@ -205,17 +215,10 @@ def main(page: ft.Page):
                     bgcolor="black",
                     alignment=ft.alignment.center
                 ),
-                ft.Container(
-                    content=ft.Row([
-                        ft.ElevatedButton("Abrir Externamente (VLC/Navegador)", icon="open_in_new", on_click=lambda _: page.launch_url(channel.url), bgcolor="blue", color="white")
-                    ], alignment=ft.MainAxisAlignment.CENTER),
-                    padding=10,
-                    bgcolor=surface_color
-                )
             ], expand=True)
         )
 
-    def show_channel_list(channels, list_url=None):
+    async def show_channel_list(channels, list_url=None):
         page.clean()
         current_channels[:] = channels
         current_filtered_channels[:] = channels
@@ -229,13 +232,13 @@ def main(page: ft.Page):
         
         selected_category = ["All"] # List ref for mutability
 
-        def update_list():
+        async def update_list():
             # Filter Logic
             filtered = []
             search_query = txt_search.value.lower()
             cat = selected_category[0]
             
-            fav_urls = {f["url"] for f in get_favorites()} # Optimize lookup
+            fav_urls = {f["url"] for f in await get_favorites()} # Optimize lookup
             
             for c in channels:
                 matches_search = search_query in c.name.lower()
@@ -256,23 +259,22 @@ def main(page: ft.Page):
             # Rebuild List Control
             lv.controls.clear()
             if not filtered:
-                lv.controls.append(ft.Text("No se encontraron canales.", color="grey", italic=True))
+                lv.controls.append(ft.Text("LotusPlay no encontró canales.", color="grey", italic=True))
             else:
                  for c in filtered[:100]: # Limit render for performance initially
                     
-                    is_fav = is_favorite(c.url)
+                    is_fav = await is_favorite(c.url)
                     fav_icon = "favorite" if is_fav else "favorite_border"
                     fav_color = "red" if is_fav else "white"
 
-                    # Helper to capture `c` in closure for toggle logic
-                    def on_fav_click(e, chan=c):
-                        toggle_favorite(chan.url, chan.name)
-                        # Refresh list if we are in Favorites tab to remove it dynamically
-                        if selected_category[0] == "★ Favoritos":
-                            update_list()
-                        else:
-                            # Visual update: force refresh list to update icon
-                            update_list()
+                    async def on_fav_click(e, chan=c):
+                         await toggle_favorite(chan.url, chan.name)
+                         # Refresh list if we are in Favorites tab to remove it dynamically
+                         if selected_category[0] == "★ Favoritos":
+                             await update_list()
+                         else:
+                             # Visual update: force refresh list to update icon
+                             await update_list()
 
                     lv.controls.append(
                         ft.Container(
@@ -284,23 +286,23 @@ def main(page: ft.Page):
                                 ], expand=True),
                                 # Favorites Button
                                 ft.IconButton(fav_icon, icon_color=fav_color, on_click=on_fav_click),
-                                ft.IconButton("play_circle", icon_color="white", on_click=lambda e, chan=c: show_video_player(chan))
+                                ft.IconButton("play_circle", icon_color="white", on_click=async_bind(show_video_player, c))
                             ]),
                             bgcolor=surface_color,
                             padding=10,
                             border_radius=5,
                             ink=True,
-                            on_click=lambda e, chan=c: show_video_player(chan)
+                            on_click=async_bind(show_video_player, c)
                         )
                     )
             page.update()
 
-        def on_search(e):
-            update_list()
+        async def on_search(e):
+            await update_list()
 
         # --- UI Elements ---
         txt_search = ft.TextField(
-            hint_text="Buscar canal...", 
+            hint_text="Buscar en LotusPlay...", 
             prefix_icon="search", 
             border_radius=20, 
             height=40, 
@@ -313,25 +315,25 @@ def main(page: ft.Page):
         # Categories - Horizontal Scroll
         cat_row = ft.Row(scroll=ft.ScrollMode.HIDDEN)
         
-        def check_parental_pin(category, on_success):
+        async def check_parental_pin(category, on_success):
             keywords = ["adult", "xxx", "+18", "porn", "xv", "sex", "18+"]
             if not any(k in category.lower() for k in keywords):
-                on_success()
+                await on_success()
                 return
 
-            saved_pin = page.client_storage.get("parental_pin")
+            saved_pin = await page.client_storage.get_async("parental_pin")
             
-            def verify_pin(e):
+            async def verify_pin(e):
                 if txt_pin.value == saved_pin:
                     page.close(dlg_pin)
-                    on_success()
+                    await on_success()
                 else:
                     txt_pin.error_text = "PIN Incorrecto"
                     txt_pin.update()
 
-            def create_pin(e):
+            async def create_pin(e):
                 if len(txt_create.value) == 4 and txt_create.value.isdigit():
-                    page.client_storage.set("parental_pin", txt_create.value)
+                    await page.client_storage.set_async("parental_pin", txt_create.value)
                     page.close(dlg_create)
                     show_info("PIN Creado. Selecciona la categoría nuevamente.")
                 else:
@@ -355,40 +357,37 @@ def main(page: ft.Page):
                 )
                 page.open(dlg_pin)
 
-        def set_cat(category_name):
-            def _apply():
+        async def set_cat(category_name):
+            async def _apply():
                 selected_category[0] = category_name
-                update_list()
+                await update_list()
             
-            check_parental_pin(category_name, _apply)
+            await check_parental_pin(category_name, _apply)
 
         # Add "All" button
-        cat_row.controls.append(ft.OutlinedButton("Todos", on_click=lambda _, c="All": set_cat(c), height=30))
+        cat_row.controls.append(ft.OutlinedButton("Todos", on_click=async_bind(set_cat, "All"), height=30))
         for cat in categories:
             # Highlight 'Favorites' specially?
             btn_style = ft.ButtonStyle(color="amber") if cat == "★ Favoritos" else None
             display_text = cat if cat and cat.strip() else "Otros"
-            cat_row.controls.append(ft.OutlinedButton(display_text, on_click=lambda _, c=cat: set_cat(c), height=30, style=btn_style))
+            cat_row.controls.append(ft.OutlinedButton(display_text, on_click=async_bind(set_cat, cat), height=30, style=btn_style))
 
         lv = ft.ListView(expand=1, spacing=10, padding=10)
         
         # Initial Build
-        update_list()
+        asyncio.create_task(update_list())
             
         page.add(
             ft.Container(
                 content=ft.Column([
                     ft.Container(
                         content=ft.Row([
-                            ft.IconButton("arrow_back", on_click=lambda _: show_dashboard(get_accounts()[0])), # HACK: Should pass exact account, but for now we fallback. Better: passing account info around
+                            ft.IconButton("arrow_back", on_click=async_bind(show_profiles_view)), 
                             # Quick fix: The `load_channels` function doesn't receive `account_data` yet, only URL.
                             # We need to look up owner of this URL to return to dashboard properly.
                             # For now: return to Profile Selection is safer if we don't know the dash.
-                            # Let's start with show_profiles_view() as safe fallback or hack it.
-                            # Wait, in the Dashboard we call load_channels(account['url']).
-                            # Use a global or state-based current_account?
                             txt_search,
-                            ft.IconButton("refresh", tooltip="Actualizar Lista", icon_color="white", on_click=lambda _: load_channels(list_url, force_refresh=True)) if list_url else ft.Container()
+                            ft.IconButton("refresh", tooltip="Actualizar Lista", icon_color="white", on_click=async_bind(load_channels, list_url, force_refresh=True)) if list_url else ft.Container()
                         ]),
                         padding=10
                     ),
@@ -401,7 +400,7 @@ def main(page: ft.Page):
         )
         
     # --- VOD Logic ---
-    def load_vod(account_data):
+    async def load_vod(account_data):
         if account_data["type"] != "xtream":
             def close_dlg(e):
                 page.close(dlg)
@@ -423,7 +422,7 @@ def main(page: ft.Page):
             
             # Fetch content
             # TODO: Pagination?
-            vod_streams = client.get_vod_streams()
+            vod_streams = await client.get_vod_streams()
             page.close(loading_dlg)
             
             if not vod_streams:
@@ -493,7 +492,7 @@ def main(page: ft.Page):
         )
 
     # --- Series Logic ---
-    def load_series(account_data):
+    async def load_series(account_data):
         if account_data["type"] != "xtream":
              def close_dlg_s(e): page.close(dlg_s)
              dlg_s = ft.AlertDialog(title=ft.Text("No Disponible"), content=ft.Text("Solo cuentas Xtream."), actions=[ft.TextButton("OK", on_click=close_dlg_s)])
@@ -507,7 +506,7 @@ def main(page: ft.Page):
             data = account_data["data"]
             client = XtreamClient(data["server"], data["port"], data["user"], data["pass"])
             
-            series = client.get_series()
+            series = await client.get_series()
             page.close(loading_dlg)
             
             if not series:
@@ -564,17 +563,17 @@ def main(page: ft.Page):
             )
         )
 
-    def show_settings_view(account_data):
+    async def show_settings_view(account_data):
         page.clean()
         
-        def clear_cache(e):
-             page.client_storage.clear()
+        async def clear_cache(e):
+             await page.client_storage.clear_async()
              show_info("Caché borrada. Reinicia la app.")
              
         def change_pin(e):
-            def save_new_pin(e):
+            async def save_new_pin(e):
                 if len(txt_new_pin.value) == 4 and txt_new_pin.value.isdigit():
-                    page.client_storage.set("parental_pin", txt_new_pin.value)
+                    await page.client_storage.set_async("parental_pin", txt_new_pin.value)
                     page.close(dlg_pin)
                     show_info("PIN Actualizado")
                 else:
@@ -597,7 +596,7 @@ def main(page: ft.Page):
             ft.Container(
                 content=ft.Column([
                     ft.Row([
-                         ft.IconButton("arrow_back", on_click=lambda _: show_dashboard(account_data)),
+                         ft.IconButton("arrow_back", on_click=async_bind(show_dashboard, account_data)),
                          ft.Text("Ajustes", size=24, weight=ft.FontWeight.BOLD)
                     ]),
                     ft.Container(height=20),
@@ -611,7 +610,7 @@ def main(page: ft.Page):
                     
                     ft.Divider(),
                     ft.Text("Cuenta", color="amber", weight=ft.FontWeight.BOLD),
-                    ft.ListTile(leading=ft.Icon("logout", color="red"), title=ft.Text("Cerrar Sesión", color="red"), on_click=lambda _: show_profiles_view()),
+                    ft.ListTile(leading=ft.Icon("logout", color="red"), title=ft.Text("Cerrar Sesión", color="red"), on_click=async_bind(show_profiles_view)),
                     
                     ft.Divider(),
                     ft.ListTile(leading=ft.Icon("info"), title=ft.Text("Versión 1.0.0"), subtitle=ft.Text("Desarrollado por @Kinglotusp")),
@@ -622,7 +621,7 @@ def main(page: ft.Page):
         )
 
     # --- Dashboard (Home) ---
-    def show_dashboard(account_data):
+    async def show_dashboard(account_data):
         page.clean()
         
         def dash_card(icon_name, title, subtitle, color, on_click):
@@ -647,34 +646,37 @@ def main(page: ft.Page):
                 content=ft.Column([
                     ft.Container(
                         content=ft.Row([
-                            ft.IconButton("arrow_back", on_click=lambda _: show_profiles_view()),
+                            ft.IconButton("arrow_back", on_click=async_bind(show_profiles_view)),
                             ft.Text(account_data["name"], size=20, weight=ft.FontWeight.BOLD)
                         ]),
                         padding=10
                     ),
                     ft.Container(height=20),
-                    ft.Text("Bienvenido", size=30, weight=ft.FontWeight.BOLD, color="amber"),
+                    ft.Text("Bienvenido a LotusPlay", size=30, weight=ft.FontWeight.BOLD, color="amber"),
                     ft.Text("¿Qué deseas ver hoy?", size=14, color="grey"),
                     ft.Container(height=40),
                     ft.Row([
-                        dash_card("live_tv", "Live TV", "Canales en Vivo", "blue", lambda _: load_channels(account_data["url"])),
-                        dash_card("movie", "Películas", "Catálogo VOD", "red", lambda _: load_vod(account_data))
+                        dash_card("live_tv", "Live TV", "Canales en Vivo", "blue", async_bind(load_channels, account_data["url"])),
+                        dash_card("movie", "Películas", "Catálogo VOD", "red", async_bind(load_vod, account_data))
                     ], alignment=ft.MainAxisAlignment.CENTER, spacing=20),
                     ft.Container(height=20),
                     ft.Row([
-                         dash_card("tv", "Series", "Próximamente", "purple", lambda _: load_series(account_data)),
-                         dash_card("settings", "Ajustes", "Opciones", "grey", lambda _: show_settings_view(account_data))
+
+                         dash_card("tv", "Series", "Próximamente", "purple", async_bind(load_series, account_data)),
+                         dash_card("settings", "Ajustes", "Opciones", "grey", async_bind(show_settings_view, account_data))
                     ], alignment=ft.MainAxisAlignment.CENTER, spacing=20),
+                    ft.Container(height=20),
+                    ft.Text("Desarrollado por @Kinglotusp", size=12, color="grey")
                 ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
                 expand=True
             )
         )
 
     # --- Views ---
-    def show_profiles_view():
+    async def show_profiles_view():
         page.clean()
         
-        accounts = get_accounts()
+        accounts = await get_accounts()
         
         lv = ft.ListView(expand=True, spacing=15, padding=20)
         
@@ -694,6 +696,8 @@ def main(page: ft.Page):
                 except: pass
             elif exp_timestamp:
                 exp_text = str(exp_timestamp)
+                if exp_text.lower() == "unlimited":
+                    exp_text = "Ilimitado"
 
             # Card Color Status
             status_color = "green" if is_active else "red"
@@ -715,16 +719,16 @@ def main(page: ft.Page):
                                 ft.Text(f"{status_text} • Vence: {exp_text}", size=12, color="grey")
                             ])
                         ], expand=True),
-                        ft.IconButton("arrow_forward_ios", icon_color="white", on_click=lambda e, a=acc: show_dashboard(a)),
+                        ft.IconButton("arrow_forward_ios", icon_color="white", on_click=async_bind(show_dashboard, acc)),
                         # FIX: Pass index to delete_account
-                        ft.IconButton("delete", icon_color="red", on_click=lambda e, i=idx: delete_account(i))
+                        ft.IconButton("delete", icon_color="red", on_click=async_bind(delete_account, idx))
                     ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                     bgcolor="#1f1f1f", # Darker card background
                     padding=20,
                     border_radius=15,
                     border=ft.border.all(1, "#333333"),
                     ink=True,
-                    on_click=lambda e, a=acc: show_dashboard(a)
+                    on_click=async_bind(show_dashboard, acc)
                 )
             )
 
@@ -734,7 +738,7 @@ def main(page: ft.Page):
                     ft.Container(height=20),
                     # Generic logo icon if image not available
                     ft.Icon("live_tv", size=80, color="amber"), 
-                    ft.Text("Mis Cuentas", size=24, weight=ft.FontWeight.BOLD),
+                    ft.Text("Cuentas LotusPlay", size=24, weight=ft.FontWeight.BOLD),
                     ft.Text("Selecciona una cuenta para continuar", color="grey"),
                     ft.Container(height=20),
                     lv if accounts else ft.Container(
@@ -753,7 +757,9 @@ def main(page: ft.Page):
                             shape=ft.RoundedRectangleBorder(radius=10),
                             padding=15
                         )
-                    )
+                    ),
+                    ft.Container(height=20),
+                    ft.Text("Desarrollado por @Kinglotusp", size=12, color="grey")
                 ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
                 expand=True,
                 gradient=ft.LinearGradient(
@@ -779,7 +785,7 @@ def main(page: ft.Page):
         txt_m3u = ft.TextField(label="URL de la Lista M3U", prefix_icon="link", hint_text="http://...", bgcolor=surface_color, border_radius=10)
         txt_name_m3u = ft.TextField(label="Nombre del Perfil", prefix_icon="edit", bgcolor=surface_color, border_radius=10)
 
-        def login_click(e):
+        async def login_click(e):
             if tabs.selected_index == 0: # Xtream
                 server = txt_server.value
                 port = txt_port.value
@@ -796,7 +802,7 @@ def main(page: ft.Page):
 
                 try:
                     client = XtreamClient(server, port, user, password)
-                    is_valid, result = client.validate_login()
+                    is_valid, result = await client.validate_login()
                     page.close(loading_dlg)
 
                     if is_valid:
@@ -807,9 +813,9 @@ def main(page: ft.Page):
                             "data": {"server": server, "port": port, "user": user, "pass": password},
                             "user_info": result.get("user_info", {}) if isinstance(result, dict) else {}
                         }
-                        save_account(account)
+                        await save_account(account)
                         show_info("Cuenta guardada correctamente")
-                        show_dashboard(account)
+                        await show_dashboard(account)
                     else:
                         show_error(f"Error: {result}")
                 except Exception as ex:
@@ -832,11 +838,9 @@ def main(page: ft.Page):
                     "data": {"url": url},
                     "user_info": {"status": "Active", "exp_date": "Unlimited"} # Pseudo info for M3U
                 }
-                save_account(account)
+                await save_account(account)
                 show_info("Lista guardada")
-                load_channels(url) # Load immediately or go to dashboard? Standard is dashboard now?
-                # Actually, flow is usually to Dashboard now.
-                show_dashboard(account)
+                await show_dashboard(account)
 
         tabs = ft.Tabs(
             selected_index=0,
@@ -879,7 +883,7 @@ def main(page: ft.Page):
                     ft.Container(height=20),
                     # Use Icon instead of Image to be safe if logo.png missing
                     ft.Icon("tv", size=60, color="amber"),
-                    ft.Text("Iniciar Sesión", size=24, weight=ft.FontWeight.BOLD),
+                    ft.Text("Acceso LotusPlay", size=24, weight=ft.FontWeight.BOLD),
                     ft.Container(
                         content=tabs,
                         expand=True,
@@ -918,8 +922,8 @@ def main(page: ft.Page):
     # --- UI Components Instances ---
 
     # Init - Determine start screen
-    if get_accounts():
-        show_profiles_view()
+    if await get_accounts():
+        await show_profiles_view()
     else:
         show_login_view()
 

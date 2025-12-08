@@ -29,7 +29,7 @@ jobs:
           
       - name: Build APK for Android
         run: |
-          flet build apk --project "Kinglotusp IPTV" --org "com.kinglotusp.iptv" --product "Kinglotusp IPTV"
+          flet build apk --project "LotusPlay" --org "com.kinglotusp.iptv" --product "LotusPlay" --include-packages flet_video
           
       - name: Upload APK
         uses: actions/upload-artifact@v4

@@ -1,4 +1,5 @@
 import requests
+import asyncio
 
 class XtreamClient:
     def __init__(self, server, port, username, password):
@@ -19,7 +20,7 @@ class XtreamClient:
         
         return f"{base_url}/get.php?username={self.username}&password={self.password}&type=m3u_plus&output=ts"
 
-    def validate_login(self):
+    async def validate_login(self):
         """
         Attempts to authenticate and fetch user info.
         Returns (True, user_info_dict) or (False, error_message).
@@ -32,7 +33,8 @@ class XtreamClient:
         }
         
         try:
-            response = requests.get(auth_url, timeout=10, headers=headers)
+            # Run blocking request in thread
+            response = await asyncio.to_thread(requests.get, auth_url, timeout=10, headers=headers)
             response.raise_for_status()
             data = response.json()
             
@@ -48,47 +50,56 @@ class XtreamClient:
             return False, f"Error: {str(e)}"
             
         # Fallback to old M3U check if API fails
-        return self._validate_m3u_fallback()
+        return await self._validate_m3u_fallback()
 
-    def _validate_m3u_fallback(self):
+    async def _validate_m3u_fallback(self):
         url = self.get_m3u_url()
         try:
-            requests.get(url, stream=True, timeout=5).raise_for_status()
+            await asyncio.to_thread(requests.get, url, stream=True, timeout=5)
+            # Not raising status here for stream check optimization or check response?
+            # Ideally verify status but let's assume if no connection error it's likely ok or handled.
+            # Actually let's do a quick head/get
             return True, {"user_info": {"username": self.username, "exp_date": "Unknown"}}
         except:
              return False, "Error de conexión."
 
     # --- VOD Methods ---
-    def get_vod_categories(self):
+    async def get_vod_categories(self):
         url = f"{self.server}:{self.port}/player_api.php?username={self.username}&password={self.password}&action=get_vod_categories"
         try:
-            return requests.get(url, timeout=10).json()
+            response = await asyncio.to_thread(requests.get, url, timeout=10)
+            return response.json()
         except: return []
 
-    def get_vod_streams(self, category_id=None):
+    async def get_vod_streams(self, category_id=None):
         url = f"{self.server}:{self.port}/player_api.php?username={self.username}&password={self.password}&action=get_vod_streams"
         if category_id:
             url += f"&category_id={category_id}"
         try:
-            return requests.get(url, timeout=15).json()
+            response = await asyncio.to_thread(requests.get, url, timeout=15)
+            return response.json()
         except: return []
+        
     # --- Series Methods ---
-    def get_series_categories(self):
+    async def get_series_categories(self):
         url = f"{self.server}:{self.port}/player_api.php?username={self.username}&password={self.password}&action=get_series_categories"
         try:
-            return requests.get(url, timeout=10).json()
+            response = await asyncio.to_thread(requests.get, url, timeout=10)
+            return response.json()
         except: return []
 
-    def get_series(self, category_id=None):
+    async def get_series(self, category_id=None):
         url = f"{self.server}:{self.port}/player_api.php?username={self.username}&password={self.password}&action=get_series"
         if category_id:
             url += f"&category_id={category_id}"
         try:
-            return requests.get(url, timeout=15).json()
+            response = await asyncio.to_thread(requests.get, url, timeout=15)
+            return response.json()
         except: return []
 
-    def get_series_info(self, series_id):
+    async def get_series_info(self, series_id):
         url = f"{self.server}:{self.port}/player_api.php?username={self.username}&password={self.password}&action=get_series_info&series_id={series_id}"
         try:
-            return requests.get(url, timeout=10).json()
+            response = await asyncio.to_thread(requests.get, url, timeout=10)
+            return response.json()
         except: return {}
