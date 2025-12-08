@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'services/storage_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
 
@@ -63,12 +64,14 @@ class _AppStarterState extends State<AppStarter> {
   }
 
   Future<void> _checkLogin() async {
-    // Simple splash delay or check auth
-    // For now, redirect to Login. 
-    // TODO: implement checking shared_preferences for auto-login
     await Future.delayed(const Duration(seconds: 2));
-    if (mounted) {
-       Navigator.of(context).pushReplacementNamed('/login');
+    if (!mounted) return;
+
+    final account = await StorageService.getActiveAccount();
+    if (account != null) {
+      if (mounted) Navigator.of(context).pushReplacementNamed('/dashboard');
+    } else {
+      if (mounted) Navigator.of(context).pushReplacementNamed('/login');
     }
   }
 

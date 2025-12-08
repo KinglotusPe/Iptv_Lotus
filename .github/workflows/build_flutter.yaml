@@ -29,7 +29,7 @@ jobs:
 
       - name: Generate Android Platform Files
         # Critical step: creates android/ folder since we don't have it locally
-        run: flutter create . --platforms android
+        run: flutter create . --platforms android --project-name lotusplay
 
       - name: Build APK
         run: flutter build apk --release --no-tree-shake-icons
