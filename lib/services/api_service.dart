@@ -147,4 +147,23 @@ class ApiService {
        return [];
     }
   }
+
+  static Future<Map<String, String>> getXtreamCategories(String url, String username, String password) async {
+    try {
+      final uri = Uri.parse("$url/player_api.php?username=$username&password=$password&action=get_live_categories");
+      final response = await http.get(uri);
+      
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        final Map<String, String> categories = {};
+        for (var item in data) {
+           categories[item['category_id']?.toString() ?? ""] = item['category_name'] ?? "Unknown";
+        }
+        return categories;
+      }
+      return {};
+    } catch (e) {
+      return {};
+    }
+  }
 }

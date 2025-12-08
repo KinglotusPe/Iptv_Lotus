@@ -73,4 +73,14 @@ class StorageService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList(KEY_FAVORITES, favs);
   }
+
+  static Future<void> deleteAccount(Account account) async {
+    final prefs = await SharedPreferences.getInstance();
+    List<String> accounts = prefs.getStringList(KEY_ACCOUNTS) ?? [];
+    accounts.removeWhere((e) {
+      final acc = Account.fromJson(json.decode(e));
+      return acc.url == account.url && acc.username == account.username;
+    });
+    await prefs.setStringList(KEY_ACCOUNTS, accounts);
+  }
 }

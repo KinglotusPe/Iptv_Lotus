@@ -16,7 +16,8 @@ class LiveTvScreen extends StatefulWidget {
 class _LiveTvScreenState extends State<LiveTvScreen> {
   // Data
   List<Channel> _allChannels = [];
-  List<String> _categories = [];
+  Map<String, String> _categoryMap = {}; // ID -> Name
+  List<String> _categories = []; // list of IDs (or names if m3u)
   Set<String> _favorites = {};
   
   // State
@@ -42,27 +43,45 @@ class _LiveTvScreenState extends State<LiveTvScreen> {
       final favList = await StorageService.getFavorites();
       _favorites = favList.toSet();
 
-      // 2. Load Channels
       List<Channel> channels = [];
+      Map<String, String> catMap = {};
+
       if (_account!.type == 'xtream') {
-        channels = await ApiService.getXtreamLive(_account!.url, _account!.username, _account!.password);
+        // Parallel fetch for speed
+        final results = await Future.wait([
+          ApiService.getXtreamLive(_account!.url, _account!.username, _account!.password),
+          ApiService.getXtreamCategories(_account!.url, _account!.username, _account!.password)
+        ]);
+        
+        channels = results[0] as List<Channel>;
+        catMap = results[1] as Map<String, String>;
       } else {
         final response = await http.get(Uri.parse(_account!.url));
         if (response.statusCode == 200) {
           channels = ApiService.parseM3u(response.body);
+          // M3U categories are just strings in the channel object
         }
       }
       
       // 3. Extract Categories
       final Set<String> cats = {"Todas", "Favoritos"};
+      
+      // Populate IDs or Names
       for (var c in channels) {
-        cats.add(c.group);
+        cats.add(c.group); // For Xtream, this is the ID. For M3U, it's the Name.
       }
       
       setState(() {
         _allChannels = channels;
-        _categories = cats.toList()..sort();
-        // Move specal cats to top
+        _categoryMap = catMap;
+        _categories = cats.toList()..sort((a, b) {
+             // Sort by mapped name if available, else by ID/Name
+             final nameA = _categoryMap[a] ?? a;
+             final nameB = _categoryMap[b] ?? b;
+             return nameA.compareTo(nameB);
+        });
+        
+        // Ensure special cats are at top
         _categories.remove("Todas");
         _categories.remove("Favoritos");
         _categories.insert(0, "Favoritos");
@@ -72,8 +91,14 @@ class _LiveTvScreenState extends State<LiveTvScreen> {
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error loading: $e")));
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  String _getCategoryName(String id) {
+     if (id == "Todas") return "Todas";
+     if (id == "Favoritos") return "Favoritos";
+     return _categoryMap[id] ?? id; // Return Name if mapped, else ID
   }
 
   @override
@@ -112,10 +137,13 @@ class _LiveTvScreenState extends State<LiveTvScreen> {
         ),
         backgroundColor: const Color(0xFF1B263B),
         elevation: 0,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(60),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      ),
+      body: Column(
+        children: [
+          // Search Bar Area (Clean, no overlap)
+          Container(
+            color: const Color(0xFF1B263B),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: TextField(
                style: const TextStyle(color: Colors.white),
                decoration: InputDecoration(
@@ -125,76 +153,97 @@ class _LiveTvScreenState extends State<LiveTvScreen> {
                  filled: true,
                  fillColor: Colors.black26,
                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
+                 isDense: true, // Compact
                ),
                onChanged: (val) => setState(() => _searchQuery = val),
             ),
           ),
-        ),
-      ),
-      body: Row(
-        children: [
-          // Left Column: Categories
-          Expanded(
-            flex: 2,
-            child: Container(
-              color: const Color(0xFF161B22),
-              child: ListView.separated(
-                itemCount: _categories.length,
-                separatorBuilder: (_, __) => const Divider(height: 1, color: Colors.white10),
-                itemBuilder: (context, index) {
-                  final cat = _categories[index];
-                  final isSelected = cat == _selectedCategory;
-                  return ListTile(
-                    title: Text(cat, style: GoogleFonts.inter(color: isSelected ? Colors.white : Colors.white70, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
-                    tileColor: isSelected ? Colors.blueAccent.withOpacity(0.2) : null,
-                    selected: isSelected,
-                    selectedTileColor: Colors.blueAccent.withOpacity(0.2), // Highlight
-                    leading: isSelected ? const Icon(Icons.arrow_right, color: Colors.blueAccent) : null,
-                    onTap: () => setState(() => _selectedCategory = cat),
-                  );
-                },
-              ),
-            ),
-          ),
           
-          // Right Column: Channels
           Expanded(
-            flex: 5, // Wider area for channels
-            child: Container(
-              color: const Color(0xFF0D1B2A), // Darker bg
-              child: ListView.builder(
-                itemCount: displayedChannels.length,
-                itemBuilder: (context, index) {
-                   final channel = displayedChannels[index];
-                   final isFav = _favorites.contains(channel.url);
-                   
-                   return Card(
-                     color: const Color(0xFF1B263B),
-                     margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                     child: ListTile(
-                       leading: Container(
-                         width: 50, height: 50,
-                         decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(5)),
-                         child: channel.logo.isNotEmpty 
-                           ? Image.network(channel.logo, fit: BoxFit.contain, errorBuilder: (_,__,___) => const Icon(Icons.tv, color: Colors.white24))
-                           : const Icon(Icons.tv, color: Colors.white24),
-                       ),
-                       title: Text(channel.name, style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w500)),
-                       trailing: IconButton(
-                         icon: Icon(isFav ? Icons.star : Icons.star_border, color: Colors.amber),
-                         onPressed: () async {
-                           await StorageService.toggleFavorite(channel.url);
-                           final newFavs = await StorageService.getFavorites();
-                           setState(() => _favorites = newFavs.toSet());
-                         },
-                       ),
-                       onTap: () {
-                         Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerScreen(url: channel.url, title: channel.name)));
-                       },
-                     ),
-                   );
-                },
-              ),
+            child: Row(
+              children: [
+                // Left Column: Categories
+                SizedBox(
+                  width: 120, // Fixed width sidebar
+                  child: Container(
+                    color: const Color(0xFF161B22),
+                    child: ListView.separated(
+                      itemCount: _categories.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1, color: Colors.white10),
+                      itemBuilder: (context, index) {
+                        final catId = _categories[index];
+                        final catName = _getCategoryName(catId);
+                        final isSelected = catId == _selectedCategory;
+                        
+                        return InkWell(
+                          onTap: () => setState(() => _selectedCategory = catId),
+                          child: Container(
+                            color: isSelected ? Colors.blueAccent.withOpacity(0.2) : null,
+                            padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+                            child: Row(
+                              children: [
+                                if (isSelected) Container(width: 3, height: 15, color: Colors.blueAccent, margin: const EdgeInsets.only(right: 5)),
+                                Expanded(
+                                  child: Text(
+                                    catName, 
+                                    style: GoogleFonts.inter(
+                                      color: isSelected ? Colors.white : Colors.white70, 
+                                      fontSize: 13,
+                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                
+                // Right Column: Channels
+                Expanded(
+                  child: Container(
+                    color: const Color(0xFF0D1B2A),
+                    child: ListView.builder(
+                      itemCount: displayedChannels.length,
+                      itemBuilder: (context, index) {
+                         final channel = displayedChannels[index];
+                         final isFav = _favorites.contains(channel.url);
+                         
+                         return Card(
+                           color: const Color(0xFF1B263B),
+                           margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                           child: ListTile(
+                             leading: Container(
+                               width: 50, height: 50,
+                               decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(5)),
+                               child: channel.logo.isNotEmpty 
+                                 ? Image.network(channel.logo, fit: BoxFit.contain, errorBuilder: (_,__,___) => const Icon(Icons.tv, color: Colors.white24))
+                                 : const Icon(Icons.tv, color: Colors.white24),
+                             ),
+                             title: Text(channel.name, style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w500)),
+                             trailing: IconButton(
+                               icon: Icon(isFav ? Icons.star : Icons.star_border, color: Colors.amber),
+                               onPressed: () async {
+                                 await StorageService.toggleFavorite(channel.url);
+                                 final newFavs = await StorageService.getFavorites();
+                                 setState(() => _favorites = newFavs.toSet());
+                               },
+                             ),
+                             onTap: () {
+                               Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerScreen(url: channel.url, title: channel.name)));
+                             },
+                           ),
+                         );
+                      },
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

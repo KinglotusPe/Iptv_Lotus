@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'services/storage_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/profiles_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -49,6 +50,7 @@ class LotusPlayApp extends StatelessWidget {
         '/': (context) => const AppStarter(),
         '/login': (context) => const LoginScreen(),
         '/dashboard': (context) => const HomeScreen(),
+        '/profiles': (context) => const ProfilesScreen(),
       },
     );
   }
@@ -72,14 +74,19 @@ class _AppStarterState extends State<AppStarter> {
     // Run checks in parallel with splash animation
     final results = await Future.wait([
       StorageService.getActiveAccount(),
+      StorageService.getAccounts(),
       Future.delayed(const Duration(seconds: 2)), // Minimum splash time
     ]);
     
     if (!mounted) return;
 
-    final account = results[0]; // Result from getActiveAccount
-    if (account != null) {
+    final Account? activeAccount = results[0] as Account?;
+    final List<Account> allAccounts = results[1] as List<Account>;
+
+    if (activeAccount != null) {
       Navigator.of(context).pushReplacementNamed('/dashboard');
+    } else if (allAccounts.isNotEmpty) {
+      Navigator.of(context).pushReplacementNamed('/profiles');
     } else {
       Navigator.of(context).pushReplacementNamed('/login');
     }
