@@ -7,7 +7,7 @@ authors = [
 ]
 dependencies = [
     "flet>=0.21.0",
-    "flet-video>=0.10.0",
+    "flet-video>=0.1.1",
     "requests",
     "qrcode"
 ]
