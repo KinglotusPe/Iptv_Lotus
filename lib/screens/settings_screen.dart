@@ -41,11 +41,27 @@ class SettingsScreen extends StatelessWidget {
           ),
           const Divider(color: Colors.white10),
           ListTile(
+            leading: const Icon(Icons.switch_account, color: Colors.purpleAccent),
+            title: const Text("Cambiar Perfil", style: TextStyle(color: Colors.white)),
+            onTap: () {
+               Navigator.pushNamed(context, '/profiles');
+            },
+          ),
+          const Divider(color: Colors.white10),
+          ListTile(
             leading: const Icon(Icons.logout, color: Colors.orange),
             title: const Text("Cerrar Sesión", style: TextStyle(color: Colors.white)),
             onTap: () async {
                await StorageService.clearActiveAccount();
-               if (context.mounted) Navigator.pushReplacementNamed(context, '/login');
+               if (context.mounted) {
+                 // Check if we have other accounts
+                 final accounts = await StorageService.getAccounts();
+                 if (accounts.isNotEmpty) {
+                    Navigator.pushReplacementNamed(context, '/profiles');
+                 } else {
+                    Navigator.pushReplacementNamed(context, '/login');
+                 }
+               }
             },
           ),
         ],

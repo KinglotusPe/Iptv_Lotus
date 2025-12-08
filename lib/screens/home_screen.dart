@@ -74,7 +74,14 @@ class _HomeScreenState extends State<HomeScreen> {
                           icon: const Icon(Icons.logout, color: Colors.white),
                           onPressed: () async {
                              await StorageService.clearActiveAccount();
-                             if (mounted) Navigator.pushReplacementNamed(context, '/login');
+                             if (mounted) {
+                               final accounts = await StorageService.getAccounts();
+                               if (accounts.isNotEmpty) {
+                                  Navigator.pushReplacementNamed(context, '/profiles');
+                               } else {
+                                  Navigator.pushReplacementNamed(context, '/login');
+                               }
+                             }
                           },
                         )
                       ],
