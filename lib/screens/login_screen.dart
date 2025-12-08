@@ -43,6 +43,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
               const Icon(Icons.tv, size: 60, color: Colors.amber),
               const SizedBox(height: 10),
               const Text("LotusPlay", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.amber)),
+              const Text("@Kinglotusp", style: TextStyle(fontSize: 14, color: Colors.white54)),
               const SizedBox(height: 30),
               
               TabBar(

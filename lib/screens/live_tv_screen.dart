@@ -103,7 +103,13 @@ class _LiveTvScreenState extends State<LiveTvScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF0D1B2A),
       appBar: AppBar(
-        title: Text("TV EN VIVO", style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("TV EN VIVO", style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+            Text("@Kinglotusp", style: GoogleFonts.inter(fontSize: 10, color: Colors.amber)),
+          ],
+        ),
         backgroundColor: const Color(0xFF1B263B),
         elevation: 0,
         bottom: PreferredSize(

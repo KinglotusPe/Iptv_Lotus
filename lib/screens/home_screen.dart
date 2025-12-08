@@ -126,7 +126,13 @@ class _HomeScreenState extends State<HomeScreen> {
               // Footer info
               Padding(
                 padding: const EdgeInsets.all(10),
-                child: Text("Expiration: Unlimited", style: GoogleFonts.inter(color: Colors.white54, fontSize: 12)),
+                child: Column(
+                  children: [
+                    Text("Expiration: Unlimited", style: GoogleFonts.inter(color: Colors.white54, fontSize: 12)),
+                    const SizedBox(height: 5),
+                    Text("Desarrollado por @Kinglotusp", style: GoogleFonts.outfit(color: Colors.amber, fontWeight: FontWeight.bold)),
+                  ],
+                ),
               ),
             ],
           ),

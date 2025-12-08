@@ -1,10 +1,15 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'services/storage_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
   runApp(const LotusPlayApp());
 }
 
@@ -63,14 +68,19 @@ class _AppStarterState extends State<AppStarter> {
   }
 
   Future<void> _checkLogin() async {
-    await Future.delayed(const Duration(seconds: 2));
+    // Run checks in parallel with splash animation
+    final results = await Future.wait([
+      StorageService.getActiveAccount(),
+      Future.delayed(const Duration(seconds: 2)), // Minimum splash time
+    ]);
+    
     if (!mounted) return;
 
-    final account = await StorageService.getActiveAccount();
+    final account = results[0]; // Result from getActiveAccount
     if (account != null) {
-      if (mounted) Navigator.of(context).pushReplacementNamed('/dashboard');
+      Navigator.of(context).pushReplacementNamed('/dashboard');
     } else {
-      if (mounted) Navigator.of(context).pushReplacementNamed('/login');
+      Navigator.of(context).pushReplacementNamed('/login');
     }
   }
 
@@ -84,6 +94,8 @@ class _AppStarterState extends State<AppStarter> {
             const Icon(Icons.play_circle_filled, size: 80, color: Colors.amber),
             const SizedBox(height: 20),
             Text("LotusPlay", style: GoogleFonts.outfit(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.amber)),
+            const SizedBox(height: 10),
+            Text("@Kinglotusp", style: GoogleFonts.inter(fontSize: 16, color: Colors.white54)),
             const SizedBox(height: 20),
             const CircularProgressIndicator(color: Colors.amber),
           ],
