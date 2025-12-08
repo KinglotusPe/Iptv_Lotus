@@ -84,7 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     crossAxisCount: 2, // 2 columns
                     mainAxisSpacing: 15,
                     crossAxisSpacing: 15,
-                    childAspectRatio: 1.3,
+                    childAspectRatio: 2.2, // Flatter cards for landscape
                     children: [
                       _buildMenuCard(
                         icon: Icons.live_tv,
