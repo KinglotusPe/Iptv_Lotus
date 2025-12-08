@@ -96,15 +96,15 @@ async def main(page: ft.Page):
         return img_str
 
     # --- Logic ---
-    def show_error(message):
+    async def show_error(message):
         page.snack_bar = ft.SnackBar(ft.Text(message, color="white"), bgcolor="red")
         page.snack_bar.open = True
-        page.update()
+        await page.update_async()
 
-    def show_info(message):
+    async def show_info(message):
         page.snack_bar = ft.SnackBar(ft.Text(message, color="white"), bgcolor="green")
         page.snack_bar.open = True
-        page.update()
+        await page.update_async()
 
     def start_url_type(url):
          return url.split("?")[0]
@@ -141,7 +141,7 @@ async def main(page: ft.Page):
                 alignment=ft.MainAxisAlignment.CENTER), 
                 modal=True
             )
-            page.open(loading_dlg)
+            await page.open_async(loading_dlg)
             
             # Auto-correction
             if "player_api.php" in url and "get.php" not in url:
@@ -156,7 +156,7 @@ async def main(page: ft.Page):
             response.raise_for_status()
             
             channels = parse_m3u(response.text)
-            page.close(loading_dlg)
+            await page.close_async(loading_dlg)
             
             if not channels:
                 show_error("No se encontraron canales en la lista.")
@@ -166,7 +166,7 @@ async def main(page: ft.Page):
             show_channel_list(channels, url)
 
         except Exception as e:
-            try: page.close(loading_dlg) 
+            try: await page.close_async(loading_dlg) 
             except: pass
             
             # Fallback to cache if network fails?
@@ -180,7 +180,7 @@ async def main(page: ft.Page):
 
 
     async def show_video_player(channel):
-        page.clean()
+        await page.clean_async()
         
         # Video Control
         # Anti-blocking headers for the stream
@@ -219,7 +219,7 @@ async def main(page: ft.Page):
         )
 
     async def show_channel_list(channels, list_url=None):
-        page.clean()
+        await page.clean_async()
         current_channels[:] = channels
         current_filtered_channels[:] = channels
         
@@ -295,7 +295,7 @@ async def main(page: ft.Page):
                             on_click=async_bind(show_video_player, c)
                         )
                     )
-            page.update()
+            await page.update_async()
 
         async def on_search(e):
             await update_list()
@@ -325,20 +325,20 @@ async def main(page: ft.Page):
             
             async def verify_pin(e):
                 if txt_pin.value == saved_pin:
-                    page.close(dlg_pin)
+                    await page.close_async(dlg_pin)
                     await on_success()
                 else:
                     txt_pin.error_text = "PIN Incorrecto"
-                    txt_pin.update()
+                    await txt_pin.update_async()
 
             async def create_pin(e):
                 if len(txt_create.value) == 4 and txt_create.value.isdigit():
                     await page.client_storage.set_async("parental_pin", txt_create.value)
-                    page.close(dlg_create)
-                    show_info("PIN Creado. Selecciona la categoría nuevamente.")
+                    await page.close_async(dlg_create)
+                    await show_info("PIN Creado. Selecciona la categoría nuevamente.")
                 else:
                     txt_create.error_text = "Debe ser de 4 dígitos"
-                    txt_create.update()
+                    await txt_create.update_async()
 
             if not saved_pin:
                 txt_create = ft.TextField(label="Crea un PIN de 4 dígitos", password=True, max_length=4, text_align=ft.TextAlign.CENTER)
@@ -347,7 +347,7 @@ async def main(page: ft.Page):
                     content=ft.Column([ft.Text("Para acceder a contenido para adultos, crea un PIN de seguridad."), txt_create], tight=True),
                     actions=[ft.TextButton("Guardar PIN", on_click=create_pin)]
                 )
-                page.open(dlg_create)
+                await page.open_async(dlg_create)
             else:
                 txt_pin = ft.TextField(label="Ingresa tu PIN", password=True, max_length=4, text_align=ft.TextAlign.CENTER, autofocus=True)
                 dlg_pin = ft.AlertDialog(
@@ -355,7 +355,7 @@ async def main(page: ft.Page):
                     content=txt_pin,
                     actions=[ft.TextButton("Entrar", on_click=verify_pin)]
                 )
-                page.open(dlg_pin)
+                await page.open_async(dlg_pin)
 
         async def set_cat(category_name):
             async def _apply():
@@ -377,7 +377,7 @@ async def main(page: ft.Page):
         # Initial Build
         asyncio.create_task(update_list())
             
-        page.add(
+        await page.add_async(
             ft.Container(
                 content=ft.Column([
                     ft.Container(
@@ -410,11 +410,11 @@ async def main(page: ft.Page):
                 content=ft.Text("El catálogo de películas (VOD) solo funciona con cuentas Xtream Codes, no con listas M3U simples."), 
                 actions=[ft.TextButton("Entendido", on_click=close_dlg)]
             )
-            page.open(dlg)
+            await page.open_async(dlg)
             return
             
         loading_dlg = ft.AlertDialog(content=ft.Row([ft.ProgressRing(), ft.Text("Cargando Películas...")], alignment=ft.MainAxisAlignment.CENTER), modal=True)
-        page.open(loading_dlg)
+        await page.open_async(loading_dlg)
         
         try:
             data = account_data["data"]
@@ -423,21 +423,23 @@ async def main(page: ft.Page):
             # Fetch content
             # TODO: Pagination?
             vod_streams = await client.get_vod_streams()
-            page.close(loading_dlg)
+            await page.close_async(loading_dlg)
             
             if not vod_streams:
-                show_error("No se encontraron películas.")
+                await show_error("No se encontraron películas.")
                 return
                 
-            show_vod_grid(vod_streams, account_data)
+                return
+                
+            await show_vod_grid(vod_streams, account_data)
 
         except Exception as e:
-            try: page.close(loading_dlg) 
+            try: await page.close_async(loading_dlg) 
             except: pass
-            show_error(f"Error cargando VOD: {str(e)}")
+            await show_error(f"Error cargando VOD: {str(e)}")
 
-    def show_vod_grid(streams, account_data):
-        page.clean()
+    async def show_vod_grid(streams, account_data):
+        await page.clean_async()
         
         # Grid
         grid = ft.GridView(
@@ -478,11 +480,11 @@ async def main(page: ft.Page):
             )
             grid.controls.append(card)
             
-        page.add(
+        await page.add_async(
             ft.Container(
                 content=ft.Column([
                     ft.Row([
-                        ft.IconButton("arrow_back", on_click=lambda _: show_dashboard(account_data)),
+                        ft.IconButton("arrow_back", on_click=async_bind(show_dashboard, account_data)),
                         ft.Text("Películas", size=20, weight=ft.FontWeight.BOLD),
                     ], alignment=ft.MainAxisAlignment.START),
                     grid
@@ -492,36 +494,41 @@ async def main(page: ft.Page):
         )
 
     # --- Series Logic ---
-    async def load_series(account_data):
         if account_data["type"] != "xtream":
-             def close_dlg_s(e): page.close(dlg_s)
-             dlg_s = ft.AlertDialog(title=ft.Text("No Disponible"), content=ft.Text("Solo cuentas Xtream."), actions=[ft.TextButton("OK", on_click=close_dlg_s)])
-             page.open(dlg_s)
+             dlg_s = ft.AlertDialog(title=ft.Text("No Disponible"), content=ft.Text("Solo cuentas Xtream."))
+             async def close_dlg_s(e):
+                 await page.close_async(dlg_s)
+             dlg_s.actions = [ft.TextButton("OK", on_click=close_dlg_s)]
+             await page.open_async(dlg_s)
              return
 
         loading_dlg = ft.AlertDialog(content=ft.Row([ft.ProgressRing(), ft.Text("Cargando Series...")], alignment=ft.MainAxisAlignment.CENTER), modal=True)
-        page.open(loading_dlg)
+        await page.open_async(loading_dlg)
 
         try:
             data = account_data["data"]
             client = XtreamClient(data["server"], data["port"], data["user"], data["pass"])
             
             series = await client.get_series()
-            page.close(loading_dlg)
+            await page.close_async(loading_dlg)
             
             if not series:
-                show_error("No se encontraron series.")
+                await show_error("No se encontraron series.")
                 return
             
-            show_series_grid(series, account_data)
+            if not series:
+                await show_error("No se encontraron series.")
+                return
+            
+            await show_series_grid(series, account_data)
             
         except Exception as e:
-            try: page.close(loading_dlg) 
+            try: await page.close_async(loading_dlg) 
             except: pass
-            show_error(f"Error: {e}")
+            await show_error(f"Error: {e}")
 
-    def show_series_grid(series_list, account_data):
-        page.clean()
+    async def show_series_grid(series_list, account_data):
+        await page.clean_async()
         
         grid = ft.GridView(
             expand=True,
@@ -546,15 +553,15 @@ async def main(page: ft.Page):
                 border_radius=5,
                 padding=5,
                 ink=True,
-                on_click=lambda e: show_info("Reproducción de episodios próximamente") 
+                on_click=async_bind(show_info, "Reproducción de episodios próximamente") 
             )
             grid.controls.append(card)
 
-        page.add(
+        await page.add_async(
             ft.Container(
                 content=ft.Column([
                     ft.Row([
-                        ft.IconButton("arrow_back", on_click=lambda _: show_dashboard(account_data)),
+                        ft.IconButton("arrow_back", on_click=async_bind(show_dashboard, account_data)),
                         ft.Text("Series", size=20, weight=ft.FontWeight.BOLD),
                     ]),
                     grid
@@ -564,21 +571,21 @@ async def main(page: ft.Page):
         )
 
     async def show_settings_view(account_data):
-        page.clean()
+        await page.clean_async()
         
         async def clear_cache(e):
              await page.client_storage.clear_async()
-             show_info("Caché borrada. Reinicia la app.")
+             await show_info("Caché borrada. Reinicia la app.")
              
         def change_pin(e):
             async def save_new_pin(e):
                 if len(txt_new_pin.value) == 4 and txt_new_pin.value.isdigit():
                     await page.client_storage.set_async("parental_pin", txt_new_pin.value)
-                    page.close(dlg_pin)
-                    show_info("PIN Actualizado")
+                    await page.close_async(dlg_pin)
+                    await show_info("PIN Actualizado")
                 else:
                     txt_new_pin.error_text = "Debe ser de 4 dígitos"
-                    txt_new_pin.update()
+                    await txt_new_pin.update_async()
 
             txt_new_pin = ft.TextField(label="Nuevo PIN", max_length=4, text_align=ft.TextAlign.CENTER)
             dlg_pin = ft.AlertDialog(
@@ -586,13 +593,13 @@ async def main(page: ft.Page):
                 content=txt_new_pin,
                 actions=[ft.TextButton("Guardar", on_click=save_new_pin)]
             )
-            page.open(dlg_pin)
+            async_bind(page.open_async, dlg_pin)(e)
 
         def toggle_theme(e):
             page.theme_mode = ft.ThemeMode.LIGHT if page.theme_mode == ft.ThemeMode.DARK else ft.ThemeMode.DARK
-            page.update()
+            async_bind(page.update_async)(e)
 
-        page.add(
+        await page.add_async(
             ft.Container(
                 content=ft.Column([
                     ft.Row([
@@ -622,7 +629,7 @@ async def main(page: ft.Page):
 
     # --- Dashboard (Home) ---
     async def show_dashboard(account_data):
-        page.clean()
+        await page.clean_async()
         
         def dash_card(icon_name, title, subtitle, color, on_click):
              return ft.Container(
@@ -641,7 +648,7 @@ async def main(page: ft.Page):
                 alignment=ft.alignment.center
             )
 
-        page.add(
+        await page.add_async(
             ft.Container(
                 content=ft.Column([
                     ft.Container(
@@ -674,7 +681,7 @@ async def main(page: ft.Page):
 
     # --- Views ---
     async def show_profiles_view():
-        page.clean()
+        await page.clean_async()
         
         accounts = await get_accounts()
         
@@ -732,7 +739,7 @@ async def main(page: ft.Page):
                 )
             )
 
-        page.add(
+        await page.add_async(
             ft.Container(
                 content=ft.Column([
                     ft.Container(height=20),
@@ -750,7 +757,7 @@ async def main(page: ft.Page):
                     ft.ElevatedButton(
                         "Agregar Nueva Cuenta", 
                         icon="add", 
-                        on_click=lambda _: show_login_view(),
+                        on_click=async_bind(show_login_view),
                         style=ft.ButtonStyle(
                             bgcolor="amber",
                             color="black",
@@ -771,8 +778,8 @@ async def main(page: ft.Page):
         )
 
     # --- Login View ---
-    def show_login_view():
-        page.clean()
+    async def show_login_view(e=None): # e arg optional for callbacks
+        await page.clean_async()
         
         # Tabs for Login Method
         # Defined controls here for closure access
@@ -794,16 +801,16 @@ async def main(page: ft.Page):
                 name = txt_name_xtream.value or server
 
                 if not all([server, user, password]):
-                    show_error("Completa servidor, usuario y contraseña")
+                    await show_error("Completa servidor, usuario y contraseña")
                     return
 
                 loading_dlg = ft.AlertDialog(content=ft.Row([ft.ProgressRing(), ft.Text("Validando...")]), modal=True)
-                page.open(loading_dlg)
+                await page.open_async(loading_dlg)
 
                 try:
                     client = XtreamClient(server, port, user, password)
                     is_valid, result = await client.validate_login()
-                    page.close(loading_dlg)
+                    await page.close_async(loading_dlg)
 
                     if is_valid:
                         account = {
@@ -814,21 +821,21 @@ async def main(page: ft.Page):
                             "user_info": result.get("user_info", {}) if isinstance(result, dict) else {}
                         }
                         await save_account(account)
-                        show_info("Cuenta guardada correctamente")
+                        await show_info("Cuenta guardada correctamente")
                         await show_dashboard(account)
                     else:
-                        show_error(f"Error: {result}")
+                        await show_error(f"Error: {result}")
                 except Exception as ex:
-                    try: page.close(loading_dlg) 
+                    try: await page.close_async(loading_dlg) 
                     except: pass
-                    show_error(f"Error de conexión: {ex}")
+                    await show_error(f"Error de conexión: {ex}")
 
             else: # M3U
                 url = txt_m3u.value
                 name = txt_name_m3u.value or "Mi Lista"
                 
                 if not url:
-                    show_error("Ingresa una URL")
+                    await show_error("Ingresa una URL")
                     return
                 
                 account = {
@@ -839,7 +846,7 @@ async def main(page: ft.Page):
                     "user_info": {"status": "Active", "exp_date": "Unlimited"} # Pseudo info for M3U
                 }
                 await save_account(account)
-                show_info("Lista guardada")
+                await show_info("Lista guardada")
                 await show_dashboard(account)
 
         tabs = ft.Tabs(
@@ -856,7 +863,8 @@ async def main(page: ft.Page):
                             txt_user,
                             txt_pass,
                             txt_name_xtream,
-                            ft.ElevatedButton("Conectar", icon="login", on_click=login_click, style=ft.ButtonStyle(bgcolor="amber", color="black", padding=15, shape=ft.RoundedRectangleBorder(radius=10)))
+                            txt_name_xtream,
+                            ft.ElevatedButton("Conectar", icon="login", on_click=async_bind(login_click), style=ft.ButtonStyle(bgcolor="amber", color="black", padding=15, shape=ft.RoundedRectangleBorder(radius=10)))
                         ], spacing=15, scroll=ft.ScrollMode.AUTO),
                         padding=20
                     )
@@ -868,7 +876,9 @@ async def main(page: ft.Page):
                         content=ft.Column([
                             txt_m3u,
                             txt_name_m3u,
-                            ft.ElevatedButton("Cargar Lista", icon="cloud_download", on_click=login_click, style=ft.ButtonStyle(bgcolor="amber", color="black", padding=15, shape=ft.RoundedRectangleBorder(radius=10)))
+                            txt_m3u,
+                            txt_name_m3u,
+                            ft.ElevatedButton("Cargar Lista", icon="cloud_download", on_click=async_bind(login_click), style=ft.ButtonStyle(bgcolor="amber", color="black", padding=15, shape=ft.RoundedRectangleBorder(radius=10)))
                         ], spacing=15),
                         padding=20
                     )
@@ -877,7 +887,7 @@ async def main(page: ft.Page):
             expand=True
         )
 
-        page.add(
+        await page.add_async(
             ft.Container(
                 content=ft.Column([
                     ft.Container(height=20),
@@ -891,7 +901,7 @@ async def main(page: ft.Page):
                         border_radius=10
                     ),
                     ft.Row([
-                        ft.TextButton("Obtener Listas Gratis", icon="telegram", style=ft.ButtonStyle(color="blue"), on_click=show_telegram_dialog)
+                        ft.TextButton("Obtener Listas Gratis", icon="telegram", style=ft.ButtonStyle(color="blue"), on_click=async_bind(show_telegram_dialog))
                     ], alignment=ft.MainAxisAlignment.CENTER),
                     ft.Text("Desarrollado por @Kinglotusp", size=12, color="grey")
                 ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
@@ -905,19 +915,19 @@ async def main(page: ft.Page):
             )
         )
 
-    def show_telegram_dialog(e):
+    async def show_telegram_dialog(e):
         qr_base64 = generate_qr_base64(TELEGRAM_LINK)
         dlg = ft.AlertDialog(
             title=ft.Text("Únete a nuestro canal", text_align=ft.TextAlign.CENTER),
             content=ft.Column([
                 ft.Image(src_base64=qr_base64, width=200, height=200),
                 ft.Text("Escanea para obtener listas GRATIS", size=12, text_align=ft.TextAlign.CENTER),
-                ft.TextButton("Abrir en Telegram", on_click=lambda _: page.launch_url(TELEGRAM_LINK))
+                ft.TextButton("Abrir en Telegram", on_click=async_bind(page.launch_url_async, TELEGRAM_LINK))
             ], tight=True, alignment=ft.MainAxisAlignment.CENTER),
-            actions=[ft.TextButton("Cerrar", on_click=lambda _: page.close(dlg))],
+            actions=[ft.TextButton("Cerrar", on_click=async_bind(page.close_async, dlg))],
             actions_alignment=ft.MainAxisAlignment.CENTER,
         )
-        page.open(dlg)
+        await page.open_async(dlg)
 
     # --- UI Components Instances ---
 
@@ -925,6 +935,6 @@ async def main(page: ft.Page):
     if await get_accounts():
         await show_profiles_view()
     else:
-        show_login_view()
+        await show_login_view()
 
 ft.app(target=main)
