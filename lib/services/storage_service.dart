@@ -68,4 +68,9 @@ class StorageService {
     }
     await prefs.setStringList(KEY_FAVORITES, favs);
   }
+
+  static Future<void> saveFavorites(List<String> favs) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(KEY_FAVORITES, favs);
+  }
 }
