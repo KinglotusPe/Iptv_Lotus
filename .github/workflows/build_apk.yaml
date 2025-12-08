@@ -32,7 +32,7 @@ jobs:
           flet build apk --project "Kinglotusp IPTV" --org "com.kinglotusp.iptv" --product "Kinglotusp IPTV"
           
       - name: Upload APK
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: app-release
           path: build/apk/app-release.apk
