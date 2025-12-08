@@ -120,6 +120,30 @@ class ApiService {
       }
       return [];
     } catch (e) {
+      return [];
+    } catch (e) {
+       return [];
+    }
+  }
+
+  static Future<List<Channel>> getXtreamSeries(String url, String username, String password) async {
+    try {
+      final uri = Uri.parse("$url/player_api.php?username=$username&password=$password&action=get_series");
+      final response = await http.get(uri);
+      
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.map((json) => Channel(
+          name: json['name'] ?? "Unknown",
+          group: "Series",
+          logo: json['cover'] ?? json['stream_icon'] ?? "", // Series often use 'cover'
+          url: "", // Series don't have a direct single URL, handled separately
+          streamId: json['series_id'].toString(),
+        )).toList();
+      }
+      return [];
+    } catch (e) {
+       print("Xtream Series Error: $e");
        return [];
     }
   }

@@ -24,52 +24,59 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   final _xtreamPassController = TextEditingController();
 
   bool _isLoading = false;
+  int _currentIndex = 0; // Para controlar la vista sin TabBarView 'expanded'
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging || _tabController.index != _currentIndex) {
+        setState(() {
+          _currentIndex = _tabController.index;
+        });
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // backgroundColor: const Color(0xFF0D1B2A), // Opcional: Asegurar fondo oscuro si es necesario
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            children: [
-              const SizedBox(height: 20),
-              const Icon(Icons.tv, size: 60, color: Colors.amber),
-              const SizedBox(height: 10),
-              const Text("LotusPlay", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.amber)),
-              const Text("@Kinglotusp", style: TextStyle(fontSize: 14, color: Colors.white54)),
-              const SizedBox(height: 30),
-              
-              TabBar(
-                controller: _tabController,
-                indicatorColor: Colors.amber,
-                labelColor: Colors.amber,
-                unselectedLabelColor: Colors.grey,
-                tabs: const [
-                  Tab(text: "Xtream Codes"),
-                  Tab(text: "M3U Playlist"),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 500), // Evita que se estire demasiado en tablets/PC
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 20),
+                  const Icon(Icons.tv, size: 60, color: Colors.amber),
+                  const SizedBox(height: 10),
+                  const Text("LotusPlay", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.amber)),
+                  const Text("@Kinglotusp", style: TextStyle(fontSize: 14, color: Colors.white54)),
+                  const SizedBox(height: 30),
+                  
+                  TabBar(
+                    controller: _tabController,
+                    indicatorColor: Colors.amber,
+                    labelColor: Colors.amber,
+                    unselectedLabelColor: Colors.grey,
+                    tabs: const [
+                      Tab(text: "Xtream Codes"),
+                      Tab(text: "M3U Playlist"),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  
+                  // Mostramos el formulario directamente para permitir scroll completo de la página
+                  // Esto arregla el problema del teclado ocultando input en horizontal
+                  _currentIndex == 0 ? _buildXtreamForm() : _buildM3uForm(),
                 ],
               ),
-              const SizedBox(height: 20),
-              
-              Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    // Xtream Form
-                    _buildXtreamForm(),
-                    // M3U Form
-                    _buildM3uForm(),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -77,77 +84,73 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   }
 
   Widget _buildXtreamForm() {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          TextField(
-            controller: _nameController,
-            decoration: const InputDecoration(labelText: "Nombre de la Cuenta", prefixIcon: Icon(Icons.label)),
+    return Column(
+      children: [
+        TextField(
+          controller: _nameController,
+          decoration: const InputDecoration(labelText: "Nombre de la Cuenta", prefixIcon: Icon(Icons.label)),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _xtreamUrlController,
+          decoration: const InputDecoration(labelText: "URL del Servidor (http://...)", prefixIcon: Icon(Icons.link)),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _xtreamUserController,
+          decoration: const InputDecoration(labelText: "Usuario", prefixIcon: Icon(Icons.person)),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _xtreamPassController,
+          decoration: const InputDecoration(labelText: "Contraseña", prefixIcon: Icon(Icons.lock)),
+          obscureText: true,
+        ),
+        const SizedBox(height: 30),
+        SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: ElevatedButton(
+            onPressed: _isLoading ? null : _loginXtream,
+            child: _isLoading ? const CircularProgressIndicator(color: Colors.black) : const Text("INICIAR SESIÓN"),
           ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: _xtreamUrlController,
-            decoration: const InputDecoration(labelText: "URL del Servidor (http://...)", prefixIcon: Icon(Icons.link)),
-          ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: _xtreamUserController,
-            decoration: const InputDecoration(labelText: "Usuario", prefixIcon: Icon(Icons.person)),
-          ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: _xtreamPassController,
-            decoration: const InputDecoration(labelText: "Contraseña", prefixIcon: Icon(Icons.lock)),
-            obscureText: true,
-          ),
-          const SizedBox(height: 30),
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: ElevatedButton(
-              onPressed: _isLoading ? null : _loginXtream,
-              child: _isLoading ? const CircularProgressIndicator(color: Colors.black) : const Text("INICIAR SESIÓN"),
-            ),
-          )
-        ],
-      ),
+        )
+      ],
     );
   }
   
   Widget _buildM3uForm() {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          TextField(
-             controller: _nameController, // Reuse name controller
-             decoration: const InputDecoration(labelText: "Nombre de la Lista", prefixIcon: Icon(Icons.label)),
+    return Column(
+      children: [
+        TextField(
+           controller: _nameController, // Reuse name controller
+           decoration: const InputDecoration(labelText: "Nombre de la Lista", prefixIcon: Icon(Icons.label)),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _urlController,
+          decoration: const InputDecoration(labelText: "URL M3U", prefixIcon: Icon(Icons.link)),
+        ),
+        const SizedBox(height: 30),
+        SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: ElevatedButton(
+            onPressed: _isLoading ? null : _loginM3u,
+            child: _isLoading ? const CircularProgressIndicator(color: Colors.black) : const Text("CARGAR LISTA"),
           ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: _urlController,
-            decoration: const InputDecoration(labelText: "URL M3U", prefixIcon: Icon(Icons.link)),
-          ),
-          const SizedBox(height: 30),
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: ElevatedButton(
-              onPressed: _isLoading ? null : _loginM3u,
-              child: _isLoading ? const CircularProgressIndicator(color: Colors.black) : const Text("CARGAR LISTA"),
-            ),
-          ),
-          const SizedBox(height: 20),
-          TextButton(
-             onPressed: () async {
-               final Uri url = Uri.parse("https://t.me/LotusIptvFREE");
-               if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-                 if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("No se pudo abrir Telegram")));
-               }
-             },
-             child: const Text("Obtener Listas Gratis", style: TextStyle(color: Colors.amber)),
-          )
-        ],
-      ),
+        ),
+        const SizedBox(height: 20),
+        TextButton(
+           onPressed: () async {
+             final Uri url = Uri.parse("https://t.me/LotusIptvFREE");
+             if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+               if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("No se pudo abrir Telegram")));
+             }
+           },
+           child: const Text("Obtener Listas Gratis", style: TextStyle(color: Colors.amber)),
+        )
+      ],
     );
   }
 
