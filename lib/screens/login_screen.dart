@@ -140,7 +140,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
              onPressed: () async {
                final Uri url = Uri.parse("https://t.me/LotusIptvFREE");
                if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("No se pudo abrir Telegram")));
+                 if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("No se pudo abrir Telegram")));
                }
              },
              child: const Text("Obtener Listas Gratis", style: TextStyle(color: Colors.amber)),
@@ -181,7 +181,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   }
 
   Future<void> _loginM3u() async {
-     // Basic helper for now
      setState(() => _isLoading = true);
      final url = _urlController.text.trim();
      final name = _nameController.text.trim();
