@@ -180,7 +180,8 @@ async def main(page: ft.Page):
 
 
     async def show_video_player(channel):
-        await page.clean_async()
+        page.controls.clear()
+        await page.update_async()
         
         # Video Control
         # Anti-blocking headers for the stream
@@ -217,9 +218,11 @@ async def main(page: ft.Page):
                 ),
             ], expand=True)
         )
+        await page.update_async()
 
     async def show_channel_list(channels, list_url=None):
-        await page.clean_async()
+        page.controls.clear()
+        await page.update_async()
         current_channels[:] = channels
         current_filtered_channels[:] = channels
         
@@ -355,7 +358,7 @@ async def main(page: ft.Page):
                     content=txt_pin,
                     actions=[ft.TextButton("Entrar", on_click=verify_pin)]
                 )
-                await page.open_async(dlg_pin)
+                async_bind(page.open_async, dlg_pin)(e)
 
         async def set_cat(category_name):
             async def _apply():
@@ -377,7 +380,7 @@ async def main(page: ft.Page):
         # Initial Build
         asyncio.create_task(update_list())
             
-        await page.add_async(
+        page.controls.append(
             ft.Container(
                 content=ft.Column([
                     ft.Container(
@@ -398,12 +401,13 @@ async def main(page: ft.Page):
                 expand=True
             )
         )
+        await page.update_async()
         
     # --- VOD Logic ---
     async def load_vod(account_data):
         if account_data["type"] != "xtream":
-            def close_dlg(e):
-                page.close(dlg)
+            async def close_dlg(e):
+                await page.close_async(dlg)
             
             dlg = ft.AlertDialog(
                 title=ft.Text("Función No Disponible"), 
@@ -439,7 +443,8 @@ async def main(page: ft.Page):
             await show_error(f"Error cargando VOD: {str(e)}")
 
     async def show_vod_grid(streams, account_data):
-        await page.clean_async()
+        page.controls.clear()
+        await page.update_async()
         
         # Grid
         grid = ft.GridView(
@@ -480,7 +485,7 @@ async def main(page: ft.Page):
             )
             grid.controls.append(card)
             
-        await page.add_async(
+        page.controls.append(
             ft.Container(
                 content=ft.Column([
                     ft.Row([
@@ -492,6 +497,7 @@ async def main(page: ft.Page):
                 expand=True
             )
         )
+        await page.update_async()
 
     # --- Series Logic ---
         if account_data["type"] != "xtream":
@@ -528,7 +534,8 @@ async def main(page: ft.Page):
             await show_error(f"Error: {e}")
 
     async def show_series_grid(series_list, account_data):
-        await page.clean_async()
+        page.controls.clear()
+        await page.update_async()
         
         grid = ft.GridView(
             expand=True,
@@ -557,7 +564,7 @@ async def main(page: ft.Page):
             )
             grid.controls.append(card)
 
-        await page.add_async(
+        page.controls.append(
             ft.Container(
                 content=ft.Column([
                     ft.Row([
@@ -569,9 +576,11 @@ async def main(page: ft.Page):
                 expand=True
             )
         )
+        await page.update_async()
 
     async def show_settings_view(account_data):
-        await page.clean_async()
+        page.controls.clear()
+        await page.update_async()
         
         async def clear_cache(e):
              await page.client_storage.clear_async()
@@ -595,11 +604,11 @@ async def main(page: ft.Page):
             )
             async_bind(page.open_async, dlg_pin)(e)
 
-        def toggle_theme(e):
+        async def toggle_theme(e):
             page.theme_mode = ft.ThemeMode.LIGHT if page.theme_mode == ft.ThemeMode.DARK else ft.ThemeMode.DARK
-            async_bind(page.update_async)(e)
+            await page.update_async()
 
-        await page.add_async(
+        page.controls.append(
             ft.Container(
                 content=ft.Column([
                     ft.Row([
@@ -629,7 +638,8 @@ async def main(page: ft.Page):
 
     # --- Dashboard (Home) ---
     async def show_dashboard(account_data):
-        await page.clean_async()
+        page.controls.clear()
+        await page.update_async()
         
         def dash_card(icon_name, title, subtitle, color, on_click):
              return ft.Container(
@@ -648,7 +658,7 @@ async def main(page: ft.Page):
                 alignment=ft.alignment.center
             )
 
-        await page.add_async(
+        page.controls.append(
             ft.Container(
                 content=ft.Column([
                     ft.Container(
@@ -681,7 +691,8 @@ async def main(page: ft.Page):
 
     # --- Views ---
     async def show_profiles_view():
-        await page.clean_async()
+        page.controls.clear()
+        await page.update_async()
         
         accounts = await get_accounts()
         
@@ -739,7 +750,7 @@ async def main(page: ft.Page):
                 )
             )
 
-        await page.add_async(
+        page.controls.append(
             ft.Container(
                 content=ft.Column([
                     ft.Container(height=20),
@@ -779,7 +790,8 @@ async def main(page: ft.Page):
 
     # --- Login View ---
     async def show_login_view(e=None): # e arg optional for callbacks
-        await page.clean_async()
+        page.controls.clear()
+        await page.update_async()
         
         # Tabs for Login Method
         # Defined controls here for closure access
@@ -887,7 +899,7 @@ async def main(page: ft.Page):
             expand=True
         )
 
-        await page.add_async(
+        page.controls.append(
             ft.Container(
                 content=ft.Column([
                     ft.Container(height=20),
@@ -914,6 +926,7 @@ async def main(page: ft.Page):
                 )
             )
         )
+        await page.update_async()
 
     async def show_telegram_dialog(e):
         qr_base64 = generate_qr_base64(TELEGRAM_LINK)
