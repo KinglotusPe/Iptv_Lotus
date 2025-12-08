@@ -57,7 +57,16 @@ class ApiService {
   // --- Xtream Logic ---
   static Future<bool> validateXtream(String url, String username, String password) async {
     try {
-      final uri = Uri.parse("$url/player_api.php?username=$username&password=$password");
+      // Normalize URL
+      String cleanUrl = url.trim();
+      if (cleanUrl.endsWith('/')) {
+        cleanUrl = cleanUrl.substring(0, cleanUrl.length - 1);
+      }
+      if (!cleanUrl.startsWith('http')) {
+        cleanUrl = 'http://$cleanUrl';
+      }
+
+      final uri = Uri.parse("$cleanUrl/player_api.php?username=$username&password=$password");
       final response = await http.get(uri);
       
       if (response.statusCode == 200) {

@@ -32,9 +32,15 @@ class StorageService {
 
   static Future<Account?> getActiveAccount() async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.reload(); // Force reload from disk
     final String? raw = prefs.getString(KEY_ACTIVE_ACCOUNT);
     if (raw != null) {
-      return Account.fromJson(json.decode(raw));
+      try {
+        return Account.fromJson(json.decode(raw));
+      } catch (e) {
+        print("Error decoding account: $e");
+        return null;
+      }
     }
     return null;
   }
