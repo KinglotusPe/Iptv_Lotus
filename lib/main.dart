@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'services/storage_service.dart';
 import 'screens/login_screen.dart';
-import 'screens/dashboard_screen.dart';
+import 'screens/home_screen.dart';
 
 void main() {
   runApp(const LotusPlayApp());
@@ -43,7 +42,7 @@ class LotusPlayApp extends StatelessWidget {
       routes: {
         '/': (context) => const AppStarter(),
         '/login': (context) => const LoginScreen(),
-        '/dashboard': (context) => const DashboardScreen(),
+        '/dashboard': (context) => const HomeScreen(),
       },
     );
   }
