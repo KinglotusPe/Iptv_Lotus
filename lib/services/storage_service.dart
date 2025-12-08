@@ -43,4 +43,23 @@ class StorageService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(KEY_ACTIVE_ACCOUNT);
   }
+
+  // --- Favorites ---
+  static const String KEY_FAVORITES = 'iptv_favorites';
+
+  static Future<List<String>> getFavorites() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getStringList(KEY_FAVORITES) ?? [];
+  }
+
+  static Future<void> toggleFavorite(String url) async {
+    final prefs = await SharedPreferences.getInstance();
+    List<String> favs = prefs.getStringList(KEY_FAVORITES) ?? [];
+    if (favs.contains(url)) {
+      favs.remove(url);
+    } else {
+      favs.add(url);
+    }
+    await prefs.setStringList(KEY_FAVORITES, favs);
+  }
 }

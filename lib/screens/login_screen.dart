@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/data_models.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
@@ -136,7 +137,12 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           ),
           const SizedBox(height: 20),
           TextButton(
-             onPressed: () {}, // TODO: Show Free Lists Dialog
+             onPressed: () async {
+               final Uri url = Uri.parse("https://t.me/LotusIptvFREE");
+               if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("No se pudo abrir Telegram")));
+               }
+             },
              child: const Text("Obtener Listas Gratis", style: TextStyle(color: Colors.amber)),
           )
         ],
