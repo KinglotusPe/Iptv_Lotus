@@ -17,6 +17,12 @@ jobs:
         with:
           python-version: '3.11'
           
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -29,7 +35,7 @@ jobs:
           
       - name: Build APK for Android
         run: |
-          flet build apk --project "LotusPlay" --org "com.kinglotusp.iptv" --product "LotusPlay"
+          flet build apk --project "LotusPlay" --org "com.kinglotusp.iptv" --product "LotusPlay" --verbose
           
       - name: Upload APK
         uses: actions/upload-artifact@v4
