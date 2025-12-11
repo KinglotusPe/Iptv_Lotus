@@ -193,6 +193,38 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         setState(() => _isLoading = false);
         return;
      }
+
+     // Attempt to parse as Xtream Codes URL
+     try {
+       final uri = Uri.parse(url);
+       final user = uri.queryParameters['username'];
+       final pass = uri.queryParameters['password'];
+       
+       if (user != null && pass != null) {
+          String baseUrl = "${uri.scheme}://${uri.host}";
+          if (uri.hasPort) {
+            baseUrl += ":${uri.port}";
+          }
+
+          // Validate as Xtream
+          final isValid = await ApiService.validateXtream(baseUrl, user, pass);
+          if (isValid) {
+             final account = Account(
+               name: name.isEmpty ? user : name,
+               url: baseUrl,
+               username: user,
+               password: pass,
+               type: 'xtream',
+             );
+             await StorageService.saveAccount(account);
+             if (mounted) Navigator.pushReplacementNamed(context, '/dashboard');
+             setState(() => _isLoading = false);
+             return;
+          }
+       }
+     } catch (e) {
+       print("Smart M3U parse failed: $e");
+     }
      
      final account = Account(
        name: name.isEmpty ? "Lista M3U" : name,

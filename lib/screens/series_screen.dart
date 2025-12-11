@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/data_models.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
+import 'player_screen.dart';
 
 class SeriesScreen extends StatefulWidget {
   const SeriesScreen({super.key});
@@ -96,10 +97,9 @@ class _SeriesScreenState extends State<SeriesScreen> {
                itemBuilder: (context, index) {
                  final serie = _displayedSeries[index];
                  return GestureDetector(
-                   onTap: () {
-                     // TODO: Implement Episodes view
-                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Serie: ${serie.name} (Episodios próximamente)")));
-                   },
+                     onTap: () {
+                       _showEpisodes(serie);
+                     },
                    child: Column(
                      crossAxisAlignment: CrossAxisAlignment.stretch,
                      children: [
@@ -123,4 +123,74 @@ class _SeriesScreenState extends State<SeriesScreen> {
              ),
     );
   }
-}
+
+  Future<void> _showEpisodes(Channel serie) async {
+    final account = await StorageService.getActiveAccount();
+    if (account == null || account.type != 'xtream' || serie.streamId == null) return;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1B263B),
+      isScrollControlled: true,
+      builder: (context) => const SizedBox(
+        height: 200, 
+        child: Center(child: CircularProgressIndicator(color: Colors.amber)),
+      ),
+    );
+
+    try {
+      final episodes = await ApiService.getXtreamSeriesEpisodes(account.url, account.username, account.password, serie.streamId!);
+      
+      if (!mounted) return;
+      Navigator.pop(context); // Pop loading
+
+      if (episodes.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("No se encontraron episodios")));
+        return;
+      }
+
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: const Color(0xFF1B263B),
+        isScrollControlled: true,
+        builder: (context) {
+           return DraggableScrollableSheet(
+             initialChildSize: 0.6,
+             minChildSize: 0.4,
+             maxChildSize: 0.9,
+             expand: false,
+             builder: (_, controller) {
+               return Column(
+                 children: [
+                   Padding(
+                     padding: const EdgeInsets.all(16),
+                     child: Text(serie.name, style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
+                   ),
+                   Expanded(
+                     child: ListView.builder(
+                       controller: controller,
+                       itemCount: episodes.length,
+                       itemBuilder: (context, index) {
+                         final ep = episodes[index];
+                         return ListTile(
+                           leading: const Icon(Icons.play_circle_outline, color: Colors.amber),
+                           title: Text(ep.name, style: const TextStyle(color: Colors.white)),
+                           subtitle: Text(ep.group, style: const TextStyle(color: Colors.white54)), // Season
+                           onTap: () {
+                              Navigator.pop(context); // Close sheet
+                              Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerScreen(url: ep.url, title: ep.name)));
+                           },
+                         );
+                       },
+                     ),
+                   ),
+                 ],
+               );
+             }
+           );
+        },
+      );
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+    }
+  }

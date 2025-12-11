@@ -7,8 +7,18 @@ import 'screens/home_screen.dart';
 import 'screens/profiles_screen.dart';
 import 'models/data_models.dart';
 
+import 'package:wakelock_plus/wakelock_plus.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Enable Wakelock
+  try {
+    await WakelockPlus.enable();
+  } catch (e) {
+    print("Failed to enable wakelock: $e");
+  }
+
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,

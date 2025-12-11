@@ -153,6 +153,7 @@ class ApiService {
       final uri = Uri.parse("$url/player_api.php?username=$username&password=$password&action=get_live_categories");
       final response = await http.get(uri);
       
+      
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         final Map<String, String> categories = {};
@@ -164,6 +165,50 @@ class ApiService {
       return {};
     } catch (e) {
       return {};
+    }
+  }
+
+  static Future<List<Channel>> getXtreamSeriesEpisodes(String url, String username, String password, String seriesId) async {
+    try {
+      final uri = Uri.parse("$url/player_api.php?username=$username&password=$password&action=get_series_info&series_id=$seriesId");
+      final response = await http.get(uri);
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final episodesMap = data['episodes']; 
+        // episodesMap is usually Map<String, List<dynamic>> where key is season number
+        
+        List<Channel> allEpisodes = [];
+        
+        if (episodesMap is Map) {
+          episodesMap.forEach((seasonStr, episodesList) {
+             if (episodesList is List) {
+               for (var ep in episodesList) {
+                  final String ext = ep['container_extension'] ?? 'mp4';
+                  final String id = ep['id'].toString();
+                  final String title = ep['title']?.toString() ?? "Episode";
+                  final String season = seasonStr.toString();
+                  final String? cover = ep['info']?['movie_image']; // Sometimes nested
+                  
+                  allEpisodes.add(Channel(
+                    name: title,
+                    group: "Season $season", // Use group for Season
+                    logo: cover ?? "", 
+                    url: "$url/series/$username/$password/$id.$ext",
+                    streamId: id,
+                  ));
+               }
+             }
+          });
+        }
+        
+        // Sort by season and episode if needed, but usually API returns sorted or we just present as is.
+        return allEpisodes;
+      }
+      return [];
+    } catch (e) {
+      print("Xtream Series Info Error: $e");
+      return [];
     }
   }
 }

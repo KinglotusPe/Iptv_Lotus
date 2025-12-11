@@ -40,8 +40,11 @@ jobs:
       - name: Build APK
         run: flutter build apk --release --no-tree-shake-icons
 
+      - name: Rename APK
+        run: mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/Lotusplay.apk
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: LotusPlay-Flutter-v1
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: Lotusplay
+          path: build/app/outputs/flutter-apk/Lotusplay.apk
