@@ -194,3 +194,4 @@ class _SeriesScreenState extends State<SeriesScreen> {
       if (mounted) Navigator.pop(context);
     }
   }
+}
