@@ -157,7 +157,11 @@ class ApiService {
         final List<dynamic> data = json.decode(response.body);
         final Map<String, String> categories = {};
         for (var item in data) {
-           categories[item['category_id']?.toString() ?? ""] = item['category_name'] ?? "Unknown";
+          if (item is Map) {
+            final id = item['category_id']?.toString() ?? "";
+            final name = item['category_name']?.toString() ?? "Unknown";
+            categories[id] = name;
+          }
         }
         return categories;
       }
@@ -177,7 +181,11 @@ class ApiService {
         final List<dynamic> data = json.decode(response.body);
         final Map<String, String> categories = {};
         for (var item in data) {
-           categories[item['category_id']?.toString() ?? ""] = item['category_name'] ?? "Unknown";
+          if (item is Map) {
+            final id = item['category_id']?.toString() ?? "";
+            final name = item['category_name']?.toString() ?? "Unknown";
+            categories[id] = name;
+          }
         }
         return categories;
       }
@@ -197,7 +205,11 @@ class ApiService {
         final List<dynamic> data = json.decode(response.body);
         final Map<String, String> categories = {};
         for (var item in data) {
-           categories[item['category_id']?.toString() ?? ""] = item['category_name'] ?? "Unknown";
+          if (item is Map) {
+            final id = item['category_id']?.toString() ?? "";
+            final name = item['category_name']?.toString() ?? "Unknown";
+            categories[id] = name;
+          }
         }
         return categories;
       }

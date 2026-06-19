@@ -126,7 +126,7 @@ class StorageService {
       final String? raw = prefs.getString(key);
       if (raw != null) {
         final List<dynamic> decoded = json.decode(raw);
-        return decoded.map((item) => Channel.fromJson(item)).toList();
+        return decoded.map((item) => Channel.fromJson(item as Map<String, dynamic>)).toList();
       }
     } catch (e) {
       print("Error reading cached channels: $e");
