@@ -36,22 +36,46 @@ class LotusPlayApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
-        primaryColor: Colors.amber,
-        scaffoldBackgroundColor: const Color(0xFF1A1A1A),
+        primaryColor: const Color(0xFFFFB703),
+        scaffoldBackgroundColor: const Color(0xFF090D16),
         colorScheme: const ColorScheme.dark(
-          primary: Colors.amber,
-          secondary: Colors.amberAccent,
-          surface: Color(0xFF2D2D2D),
-          background: Color(0xFF1A1A1A),
+          primary: Color(0xFFFFB703),
+          secondary: Color(0xFFFB8500),
+          surface: Color(0xFF151F32),
+          background: Color(0xFF090D16),
+          outline: Color(0xFF233554),
         ),
         textTheme: GoogleFonts.interTextTheme(
           Theme.of(context).textTheme.apply(bodyColor: Colors.white, displayColor: Colors.white),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.amber,
+            backgroundColor: const Color(0xFFFFB703),
             foregroundColor: Colors.black,
             textStyle: GoogleFonts.inter(fontWeight: FontWeight.bold),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: const Color(0xFF151F32),
+          labelStyle: const TextStyle(color: Colors.white70),
+          hintStyle: const TextStyle(color: Colors.white30),
+          enabledBorder: OutlineInputBorder(
+            borderSide: const BorderSide(color: Color(0xFF233554), width: 1.5),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderSide: const BorderSide(color: Color(0xFFFFB703), width: 2),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderSide: const BorderSide(color: Colors.redAccent, width: 2),
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
         useMaterial3: true,

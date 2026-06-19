@@ -6,38 +6,37 @@ class ApiService {
   
   // --- M3U Logic ---
   static List<Channel> parseM3u(String content) {
-    List<Channel> channels = [];
+    final List<Channel> channels = [];
     final lines = LineSplitter.split(content).toList();
     
     String? currentName;
     String? currentGroup;
     String? currentLogo;
 
+    // Expresiones regulares más robustas para atributos M3U
+    final groupRegex = RegExp(r'group-title=["\']([^"\']+)["\']', caseSensitive: false);
+    final logoRegex = RegExp(r'tvg-logo=["\']([^"\']+)["\']', caseSensitive: false);
+
     for (var line in lines) {
       line = line.trim();
       if (line.isEmpty) continue;
 
       if (line.startsWith("#EXTINF:")) {
-        // Simple parsing logic
-        // Extract attributes
-        final info = line.substring(8);
-        final parts = info.split(',');
-        
-        currentName = parts.last.trim();
-        
-        // Groups
-        if (line.contains('group-title="')) {
-           currentGroup = line.split('group-title="')[1].split('"')[0];
+        // Extraer el nombre que se encuentra al final de la línea después de la coma
+        final commaIndex = line.lastIndexOf(',');
+        if (commaIndex != -1) {
+          currentName = line.substring(commaIndex + 1).trim();
         } else {
-           currentGroup = "General";
+          currentName = "Canal Sin Nombre";
         }
+        
+        // Extraer grupo
+        final groupMatch = groupRegex.firstMatch(line);
+        currentGroup = groupMatch != null ? groupMatch.group(1) : "General";
 
-        // Logo
-        if (line.contains('tvg-logo="')) {
-           currentLogo = line.split('tvg-logo="')[1].split('"')[0];
-        } else {
-           currentLogo = "";
-        }
+        // Extraer logo
+        final logoMatch = logoRegex.firstMatch(line);
+        currentLogo = logoMatch != null ? logoMatch.group(1) : "";
 
       } else if (!line.startsWith("#")) {
         if (currentName != null) {
@@ -47,7 +46,9 @@ class ApiService {
             logo: currentLogo ?? "",
             url: line,
           ));
-          currentName = null; // Reset
+          currentName = null; // Reiniciar
+          currentGroup = null;
+          currentLogo = null;
         }
       }
     }
@@ -57,7 +58,6 @@ class ApiService {
   // --- Xtream Logic ---
   static Future<bool> validateXtream(String url, String username, String password) async {
     try {
-      // Normalize URL
       String cleanUrl = url.trim();
       if (cleanUrl.endsWith('/')) {
         cleanUrl = cleanUrl.substring(0, cleanUrl.length - 1);
@@ -67,11 +67,13 @@ class ApiService {
       }
 
       final uri = Uri.parse("$cleanUrl/player_api.php?username=$username&password=$password");
-      final response = await http.get(uri);
+      final response = await http.get(uri).timeout(const Duration(seconds: 10));
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return data['user_info']['auth'] == 1;
+        if (data is Map && data['user_info'] != null) {
+          return data['user_info']['auth'] == 1;
+        }
       }
       return false;
     } catch (e) {
@@ -83,13 +85,13 @@ class ApiService {
   static Future<List<Channel>> getXtreamLive(String url, String username, String password) async {
     try {
       final uri = Uri.parse("$url/player_api.php?username=$username&password=$password&action=get_live_streams");
-      final response = await http.get(uri);
+      final response = await http.get(uri).timeout(const Duration(seconds: 15));
       
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         return data.map((json) => Channel(
           name: json['name'] ?? "Unknown",
-          group: json['category_id']?.toString() ?? "General", // Need to map category ID to name ideally, skipping for MVP
+          group: json['category_id']?.toString() ?? "General",
           logo: json['stream_icon'] ?? "",
           url: "$url/live/$username/$password/${json['stream_id']}.ts",
           streamId: json['stream_id'].toString(),
@@ -103,16 +105,15 @@ class ApiService {
   }
   
   static Future<List<Channel>> getXtreamVod(String url, String username, String password) async {
-    // Similar logic for VOD
     try {
       final uri = Uri.parse("$url/player_api.php?username=$username&password=$password&action=get_vod_streams");
-      final response = await http.get(uri);
+      final response = await http.get(uri).timeout(const Duration(seconds: 15));
       
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         return data.map((json) => Channel(
           name: json['name'] ?? "Unknown",
-          group: "Movies",
+          group: json['category_id']?.toString() ?? "General",
           logo: json['stream_icon'] ?? "",
           url: "$url/movie/$username/$password/${json['stream_id']}.${json['container_extension'] ?? 'mp4'}",
           streamId: json['stream_id'].toString(),
@@ -120,24 +121,23 @@ class ApiService {
       }
       return [];
     } catch (e) {
+      print("Xtream VOD Error: $e");
       return [];
-    } catch (e) {
-       return [];
     }
   }
 
   static Future<List<Channel>> getXtreamSeries(String url, String username, String password) async {
     try {
       final uri = Uri.parse("$url/player_api.php?username=$username&password=$password&action=get_series");
-      final response = await http.get(uri);
+      final response = await http.get(uri).timeout(const Duration(seconds: 15));
       
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         return data.map((json) => Channel(
           name: json['name'] ?? "Unknown",
-          group: "Series",
-          logo: json['cover'] ?? json['stream_icon'] ?? "", // Series often use 'cover'
-          url: "", // Series don't have a direct single URL, handled separately
+          group: json['category_id']?.toString() ?? "General",
+          logo: json['cover'] ?? json['stream_icon'] ?? "", 
+          url: "", 
           streamId: json['series_id'].toString(),
         )).toList();
       }
@@ -151,8 +151,7 @@ class ApiService {
   static Future<Map<String, String>> getXtreamCategories(String url, String username, String password) async {
     try {
       final uri = Uri.parse("$url/player_api.php?username=$username&password=$password&action=get_live_categories");
-      final response = await http.get(uri);
-      
+      final response = await http.get(uri).timeout(const Duration(seconds: 10));
       
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
@@ -164,6 +163,47 @@ class ApiService {
       }
       return {};
     } catch (e) {
+      print("Xtream Live Categories Error: $e");
+      return {};
+    }
+  }
+
+  static Future<Map<String, String>> getXtreamVodCategories(String url, String username, String password) async {
+    try {
+      final uri = Uri.parse("$url/player_api.php?username=$username&password=$password&action=get_vod_categories");
+      final response = await http.get(uri).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        final Map<String, String> categories = {};
+        for (var item in data) {
+           categories[item['category_id']?.toString() ?? ""] = item['category_name'] ?? "Unknown";
+        }
+        return categories;
+      }
+      return {};
+    } catch (e) {
+      print("Xtream VOD Categories Error: $e");
+      return {};
+    }
+  }
+
+  static Future<Map<String, String>> getXtreamSeriesCategories(String url, String username, String password) async {
+    try {
+      final uri = Uri.parse("$url/player_api.php?username=$username&password=$password&action=get_series_categories");
+      final response = await http.get(uri).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        final Map<String, String> categories = {};
+        for (var item in data) {
+           categories[item['category_id']?.toString() ?? ""] = item['category_name'] ?? "Unknown";
+        }
+        return categories;
+      }
+      return {};
+    } catch (e) {
+      print("Xtream Series Categories Error: $e");
       return {};
     }
   }
@@ -171,39 +211,37 @@ class ApiService {
   static Future<List<Channel>> getXtreamSeriesEpisodes(String url, String username, String password, String seriesId) async {
     try {
       final uri = Uri.parse("$url/player_api.php?username=$username&password=$password&action=get_series_info&series_id=$seriesId");
-      final response = await http.get(uri);
+      final response = await http.get(uri).timeout(const Duration(seconds: 15));
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final episodesMap = data['episodes']; 
-        // episodesMap is usually Map<String, List<dynamic>> where key is season number
-        
-        List<Channel> allEpisodes = [];
-        
-        if (episodesMap is Map) {
-          episodesMap.forEach((seasonStr, episodesList) {
-             if (episodesList is List) {
-               for (var ep in episodesList) {
-                  final String ext = ep['container_extension'] ?? 'mp4';
-                  final String id = ep['id'].toString();
-                  final String title = ep['title']?.toString() ?? "Episode";
-                  final String season = seasonStr.toString();
-                  final String? cover = ep['info']?['movie_image']; // Sometimes nested
-                  
-                  allEpisodes.add(Channel(
-                    name: title,
-                    group: "Season $season", // Use group for Season
-                    logo: cover ?? "", 
-                    url: "$url/series/$username/$password/$id.$ext",
-                    streamId: id,
-                  ));
+        if (data is Map && data['episodes'] != null) {
+          final episodesMap = data['episodes']; 
+          List<Channel> allEpisodes = [];
+          
+          if (episodesMap is Map) {
+            episodesMap.forEach((seasonStr, episodesList) {
+               if (episodesList is List) {
+                 for (var ep in episodesList) {
+                    final String ext = ep['container_extension'] ?? 'mp4';
+                    final String id = ep['id'].toString();
+                    final String title = ep['title']?.toString() ?? "Episode";
+                    final String season = seasonStr.toString();
+                    final String? cover = ep['info']?['movie_image'];
+                    
+                    allEpisodes.add(Channel(
+                      name: title,
+                      group: "Temporada $season", 
+                      logo: cover ?? "", 
+                      url: "$url/series/$username/$password/$id.$ext",
+                      streamId: id,
+                    ));
+                 }
                }
-             }
-          });
+            });
+          }
+          return allEpisodes;
         }
-        
-        // Sort by season and episode if needed, but usually API returns sorted or we just present as is.
-        return allEpisodes;
       }
       return [];
     } catch (e) {
