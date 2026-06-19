@@ -1,14 +1,15 @@
+import 'dart:async';
 import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:video_player/video_player.dart';
+import '../models/data_models.dart';
 import '../services/storage_service.dart';
 
 class PlayerScreen extends StatefulWidget {
-  final String url;
-  final String title;
+  final Channel channel;
 
-  const PlayerScreen({super.key, required this.url, required this.title});
+  const PlayerScreen({super.key, required this.channel});
 
   @override
   State<PlayerScreen> createState() => _PlayerScreenState();
@@ -24,6 +25,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
   // Aspect Ratio Settings
   double? _customAspectRatio;
   String _aspectRatioName = "Original";
+
+  // Gesture Feedback Overlay State
+  IconData _overlayIcon = Icons.play_arrow;
+  String _overlayText = "";
+  double _overlayOpacity = 0.0;
+  Timer? _overlayTimer;
 
   @override
   void initState() {
@@ -41,11 +48,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
       // 1. Registrar canal en el historial por perfil
       final account = await StorageService.getActiveAccount();
       if (account != null) {
-        await StorageService.addToHistory(account, widget.url);
+        await StorageService.addToHistory(account, widget.channel);
       }
 
       // 2. Inicializar VideoPlayer
-      _videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(widget.url));
+      _videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(widget.channel.url));
       
       // Timeout de inicialización de 15 segundos para evitar pantallas de carga infinitas
       await _videoPlayerController.initialize().timeout(const Duration(seconds: 15));
@@ -80,6 +87,54 @@ class _PlayerScreenState extends State<PlayerScreen> {
         _errorMessage = "No se pudo conectar al canal. Asegúrate de tener conexión a Internet y que la transmisión esté activa.\n\nDetalle: ${e.toString()}";
       });
     }
+  }
+
+  void _triggerOverlay(IconData icon, String text) {
+    _overlayTimer?.cancel();
+    setState(() {
+      _overlayIcon = icon;
+      _overlayText = text;
+      _overlayOpacity = 1.0;
+    });
+    _overlayTimer = Timer(const Duration(milliseconds: 650), () {
+      if (mounted) {
+        setState(() {
+          _overlayOpacity = 0.0;
+        });
+      }
+    });
+  }
+
+  void _seekRelative(int seconds) {
+    if (!_videoPlayerController.value.isInitialized) return;
+    final currentPos = _videoPlayerController.value.position;
+    final duration = _videoPlayerController.value.duration;
+    
+    var newPos = currentPos + Duration(seconds: seconds);
+    if (newPos < Duration.zero) {
+      newPos = Duration.zero;
+    } else if (newPos > duration) {
+      newPos = duration;
+    }
+    
+    _videoPlayerController.seekTo(newPos);
+    _triggerOverlay(
+      seconds < 0 ? Icons.fast_rewind : Icons.fast_forward, 
+      seconds < 0 ? "-10s" : "+10s"
+    );
+  }
+
+  void _togglePlayPause() {
+    if (!_videoPlayerController.value.isInitialized) return;
+    setState(() {
+      if (_videoPlayerController.value.isPlaying) {
+        _videoPlayerController.pause();
+        _triggerOverlay(Icons.pause, "Pausa");
+      } else {
+        _videoPlayerController.play();
+        _triggerOverlay(Icons.play_arrow, "Reproducir");
+      }
+    });
   }
 
   void _cycleAspectRatio() {
@@ -139,6 +194,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   @override
   void dispose() {
+    _overlayTimer?.cancel();
     _chewieController?.dispose();
     _videoPlayerController.dispose();
     super.dispose();
@@ -149,7 +205,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: Text(widget.title, style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+        title: Text(widget.channel.name, style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.black54, 
         elevation: 0,
         actions: [
@@ -217,7 +273,77 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     ),
                   )
                 : (_chewieController != null && _videoPlayerController.value.isInitialized
-                    ? Chewie(controller: _chewieController!)
+                    ? Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Chewie(controller: _chewieController!),
+                          
+                          // Custom Gesture Overlay (covers top 80% to avoid overlapping bottom timeline controls)
+                          Positioned(
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 80,
+                            child: Row(
+                              children: [
+                                // Left 50%: Double tap to rewind 10s
+                                Expanded(
+                                  child: GestureDetector(
+                                    behavior: HitTestBehavior.translucent,
+                                    onDoubleTap: () => _seekRelative(-10),
+                                    onTap: _togglePlayPause,
+                                  ),
+                                ),
+                                // Right 50%: Double tap to fast forward 10s
+                                Expanded(
+                                  child: GestureDetector(
+                                    behavior: HitTestBehavior.translucent,
+                                    onDoubleTap: () => _seekRelative(10),
+                                    onTap: _togglePlayPause,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          
+                          // Center Feedback Overlay
+                          IgnorePointer(
+                            child: AnimatedOpacity(
+                              opacity: _overlayOpacity,
+                              duration: const Duration(milliseconds: 150),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                                decoration: BoxDecoration(
+                                  color: Colors.black70,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: const Color(0xFFFFB703).withOpacity(0.3), width: 1.5),
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      _overlayIcon,
+                                      color: const Color(0xFFFFB703),
+                                      size: 48,
+                                    ),
+                                    if (_overlayText.isNotEmpty) ...[
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        _overlayText,
+                                        style: GoogleFonts.outfit(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
                     : const CircularProgressIndicator(color: Color(0xFFFFB703)))),
       ),
     );

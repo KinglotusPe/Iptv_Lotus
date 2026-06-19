@@ -98,11 +98,42 @@ class AppStarter extends StatefulWidget {
   State<AppStarter> createState() => _AppStarterState();
 }
 
-class _AppStarterState extends State<AppStarter> {
+class _AppStarterState extends State<AppStarter> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _fadeAnimation;
+
   @override
   void initState() {
     super.initState();
+    
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+
+    _scaleAnimation = Tween<double>(begin: 0.7, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeOutBack,
+      ),
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 0.7, curve: Curves.easeIn),
+      ),
+    );
+
+    _controller.forward();
     _checkLogin();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   Future<void> _checkLogin() async {
@@ -110,7 +141,7 @@ class _AppStarterState extends State<AppStarter> {
     final results = await Future.wait([
       StorageService.getActiveAccount(),
       StorageService.getAccounts(),
-      Future.delayed(const Duration(seconds: 2)), // Minimum splash time
+      Future.delayed(const Duration(milliseconds: 2000)), // Minimum splash time
     ]);
     
     if (!mounted) return;
@@ -130,18 +161,103 @@ class _AppStarterState extends State<AppStarter> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.play_circle_filled, size: 80, color: Colors.amber),
-            const SizedBox(height: 20),
-            Text("LotusPlay", style: GoogleFonts.outfit(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.amber)),
-            const SizedBox(height: 10),
-            Text("@Kinglotusp", style: GoogleFonts.inter(fontSize: 16, color: Colors.white54)),
-            const SizedBox(height: 20),
-            const CircularProgressIndicator(color: Colors.amber),
-          ],
+      backgroundColor: const Color(0xFF090D16),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF090D16),
+              Color(0xFF0F172A),
+            ],
+          ),
+        ),
+        child: Center(
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: ScaleTransition(
+              scale: _scaleAnimation,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Glowing logo container
+                  Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFB703).withOpacity(0.08),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: const Color(0xFFFFB703).withOpacity(0.4),
+                        width: 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFFFB703).withOpacity(0.2),
+                          blurRadius: 30,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.play_circle_filled, 
+                        size: 80, 
+                        color: Color(0xFFFFB703),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  Text(
+                    "LotusPlay",
+                    style: GoogleFonts.outfit(
+                      fontSize: 40,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFFFFB703),
+                      letterSpacing: 1.5,
+                      shadows: [
+                        Shadow(
+                          color: const Color(0xFFFFB703).withOpacity(0.3),
+                          blurRadius: 15,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Tu Centro de Entretenimiento Digital",
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      color: Colors.white54,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 48),
+                  // Sleek micro progress indicator
+                  const SizedBox(
+                    width: 32,
+                    height: 32,
+                    child: CircularProgressIndicator(
+                      color: Color(0xFFFFB703),
+                      strokeWidth: 2.5,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    "Desarrollado por @Kinglotusp",
+                    style: GoogleFonts.outfit(
+                      fontSize: 12,
+                      color: const Color(0xFFFFB703).withOpacity(0.6),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );

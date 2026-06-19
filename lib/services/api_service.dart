@@ -261,4 +261,23 @@ class ApiService {
       return [];
     }
   }
+
+  static Future<List<EpgProgram>> getXtreamShortEpg(String url, String username, String password, String streamId) async {
+    try {
+      final uri = Uri.parse("$url/player_api.php?username=$username&password=$password&action=get_short_epg&stream_id=$streamId");
+      final response = await http.get(uri).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data is Map && data['epg_listings'] != null && data['epg_listings'] is List) {
+          final List<dynamic> listings = data['epg_listings'];
+          return listings.map((json) => EpgProgram.fromJson(json as Map<String, dynamic>)).toList();
+        }
+      }
+      return [];
+    } catch (e) {
+      print("Xtream Short EPG Error: $e");
+      return [];
+    }
+  }
 }

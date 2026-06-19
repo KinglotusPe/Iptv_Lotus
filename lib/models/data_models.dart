@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class Account {
   final String name;
   final String url;
@@ -46,10 +48,53 @@ class Channel {
   });
 
   factory Channel.fromJson(Map<String, dynamic> json) => Channel(
-    name: json['name'],
-    group: json['group'],
-    logo: json['logo'],
-    url: json['url'],
-    streamId: json['stream_id']?.toString(), // Handle int IDs from Xtream
+    name: json['name'] ?? "",
+    group: json['group'] ?? "",
+    logo: json['logo'] ?? "",
+    url: json['url'] ?? "",
+    streamId: json['stream_id']?.toString(),
   );
+
+  Map<String, dynamic> toJson() => {
+    'name': name,
+    'group': group,
+    'logo': logo,
+    'url': url,
+    if (streamId != null) 'stream_id': streamId,
+  };
+}
+
+class EpgProgram {
+  final String title;
+  final String description;
+  final String start;
+  final String end;
+
+  EpgProgram({
+    required this.title,
+    required this.description,
+    required this.start,
+    required this.end,
+  });
+
+  factory EpgProgram.fromJson(Map<String, dynamic> json) {
+    String desc = json['description'] ?? "";
+    String title = json['title'] ?? "";
+    
+    // A veces Xtream Codes retorna los campos codificados en Base64
+    try {
+      // Intentamos decodificar base64. Si tiene caracteres ilegales o no es base64, fallará y usará el texto original
+      desc = utf8.decode(base64.decode(desc.trim()));
+    } catch (_) {}
+    try {
+      title = utf8.decode(base64.decode(title.trim()));
+    } catch (_) {}
+
+    return EpgProgram(
+      title: title,
+      description: desc,
+      start: json['start'] ?? "",
+      end: json['end'] ?? "",
+    );
+  }
 }

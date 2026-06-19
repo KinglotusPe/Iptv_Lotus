@@ -4,6 +4,7 @@ import '../models/data_models.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
 import 'player_screen.dart';
+import '../widgets/skeleton_loader.dart';
 
 class SeriesScreen extends StatefulWidget {
   const SeriesScreen({super.key});
@@ -117,17 +118,45 @@ class _SeriesScreenState extends State<SeriesScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        backgroundColor: Color(0xFF090D16),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(color: Colors.purpleAccent),
-              SizedBox(height: 16),
-              Text("Cargando catálogo de series...", style: TextStyle(color: Colors.white70)),
-            ],
-          ),
+      return Scaffold(
+        backgroundColor: const Color(0xFF090D16),
+        appBar: AppBar(
+          title: Text("SERIES", style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+          backgroundColor: const Color(0xFF151F32),
+          elevation: 0,
+        ),
+        body: Row(
+          children: [
+            // Left column categories skeleton
+            Container(
+              width: 180,
+              decoration: const BoxDecoration(
+                color: Color(0xFF0C1322),
+                border: Border(right: BorderSide(color: Color(0xFF1E293B), width: 1.5)),
+              ),
+              child: ListView.builder(
+                itemCount: 8,
+                itemBuilder: (_, __) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                  child: ShimmerLoading(width: 120, height: 14),
+                ),
+              ),
+            ),
+            // Right column series grid skeleton
+            Expanded(
+              child: GridView.builder(
+                padding: const EdgeInsets.all(16),
+                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: 140, 
+                  childAspectRatio: 0.7, 
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                ),
+                itemCount: 12,
+                itemBuilder: (_, __) => const CardSkeleton(),
+              ),
+            ),
+          ],
         ),
       );
     }
@@ -546,7 +575,7 @@ class _SeriesScreenState extends State<SeriesScreen> {
                                           Navigator.pop(context); // Close bottom sheet
                                           Navigator.push(
                                             context, 
-                                            MaterialPageRoute(builder: (_) => PlayerScreen(url: ep.url, title: ep.name)),
+                                            MaterialPageRoute(builder: (_) => PlayerScreen(channel: ep)),
                                           );
                                         },
                                       ),

@@ -6,6 +6,7 @@ import 'live_tv_screen.dart';
 import 'movies_screen.dart';
 import 'series_screen.dart';
 import 'settings_screen.dart';
+import 'player_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,6 +17,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   Account? _account;
+  List<Channel> _history = [];
 
   @override
   void initState() {
@@ -29,7 +31,22 @@ class _HomeScreenState extends State<HomeScreen> {
       if (mounted) Navigator.pushReplacementNamed(context, '/login');
     } else {
       setState(() => _account = acc);
+      _loadHistory();
     }
+  }
+
+  Future<void> _loadHistory() async {
+    if (_account != null) {
+      final hist = await StorageService.getHistory(_account!);
+      setState(() => _history = hist);
+    }
+  }
+
+  void _navigateTo(Widget screen) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => screen),
+    ).then((_) => _loadHistory());
   }
 
   @override
@@ -58,12 +75,13 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 1000),
-              child: Column(
-                children: [
-                  // Header
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-                    child: Row(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header
+                    Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Column(
@@ -138,87 +156,196 @@ class _HomeScreenState extends State<HomeScreen> {
                         )
                       ],
                     ),
-                  ),
-                  
-                  const SizedBox(height: 10),
-                  
-                  // Main Buttons Grid
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                      child: Builder(
-                        builder: (context) {
-                          final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-                          return GridView(
-                            physics: const ClampingScrollPhysics(),
-                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: isLandscape ? 4 : 2, 
-                              childAspectRatio: isLandscape ? 1.55 : 1.35, 
-                              crossAxisSpacing: 20,
-                              mainAxisSpacing: 20,
+                    
+                    const SizedBox(height: 20),
+
+                    // "SEGUIR VIENDO" Section (Only visible if history exists)
+                    if (_history.isNotEmpty) ...[
+                      Text(
+                        "SEGUIR VIENDO",
+                        style: GoogleFonts.outfit(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white70,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        height: 106,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _history.length,
+                          itemBuilder: (context, index) {
+                            return _buildHistoryCard(_history[index]);
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                    
+                    // Main Buttons Grid
+                    Builder(
+                      builder: (context) {
+                        final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+                        return GridView(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: isLandscape ? 4 : 2, 
+                            childAspectRatio: isLandscape ? 1.6 : 1.35, 
+                            crossAxisSpacing: 20,
+                            mainAxisSpacing: 20,
+                          ),
+                          children: [
+                            _buildMenuCard(
+                              context: context,
+                              icon: Icons.live_tv,
+                              title: "TV EN VIVO",
+                              color: Colors.blueAccent,
+                              onTap: () => _navigateTo(const LiveTvScreen()),
                             ),
+                            _buildMenuCard(
+                              context: context,
+                              icon: Icons.movie_outlined,
+                              title: "PELÍCULAS",
+                              color: Colors.redAccent,
+                              onTap: () => _navigateTo(const MoviesScreen()),
+                            ),
+                            _buildMenuCard(
+                              context: context,
+                              icon: Icons.video_library_outlined,
+                              title: "SERIES",
+                              color: Colors.purpleAccent,
+                              onTap: () => _navigateTo(const SeriesScreen()),
+                            ),
+                            _buildMenuCard(
+                              context: context,
+                              icon: Icons.settings_outlined,
+                              title: "AJUSTES",
+                              color: Colors.tealAccent,
+                              onTap: () => _navigateTo(const SettingsScreen()),
+                            ),
+                          ],
+                        );
+                      }
+                    ),
+                    
+                    const SizedBox(height: 24),
+
+                    // Footer info
+                    Center(
+                      child: Column(
                         children: [
-                          _buildMenuCard(
-                            context: context,
-                            icon: Icons.live_tv,
-                            title: "TV EN VIVO",
-                            color: Colors.blueAccent,
-                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LiveTvScreen())),
+                          Text(
+                            "Soporte Premium Activo • Expiración: Ilimitada",
+                            style: GoogleFonts.inter(color: Colors.white38, fontSize: 11, fontWeight: FontWeight.w500),
                           ),
-                          _buildMenuCard(
-                            context: context,
-                            icon: Icons.movie_outlined,
-                            title: "PELÍCULAS",
-                            color: Colors.redAccent,
-                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MoviesScreen())),
-                          ),
-                          _buildMenuCard(
-                            context: context,
-                            icon: Icons.video_library_outlined,
-                            title: "SERIES",
-                            color: Colors.purpleAccent,
-                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SeriesScreen())),
-                          ),
-                          _buildMenuCard(
-                            context: context,
-                            icon: Icons.settings_outlined,
-                            title: "AJUSTES",
-                            color: Colors.tealAccent,
-                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
+                          const SizedBox(height: 4),
+                          Text(
+                            "Desarrollado por @Kinglotusp",
+                            style: GoogleFonts.outfit(
+                              color: const Color(0xFFFFB703),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
                           ),
                         ],
-                      );
-                    }
-                  ),
-                ),
-              ),
-                  
-                  // Footer info
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      children: [
-                        Text(
-                          "Soporte Premium Activo • Expiración: Ilimitada",
-                          style: GoogleFonts.inter(color: Colors.white38, fontSize: 11, fontWeight: FontWeight.w500),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          "Desarrollado por @Kinglotusp",
-                          style: GoogleFonts.outfit(
-                            color: const Color(0xFFFFB703),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildHistoryCard(Channel item) {
+    return Focus(
+      child: Builder(
+        builder: (context) {
+          final hasFocus = Focus.of(context).hasFocus;
+          return InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => PlayerScreen(channel: item)),
+              ).then((_) => _loadHistory());
+            },
+            borderRadius: BorderRadius.circular(12),
+            focusColor: Colors.transparent,
+            hoverColor: Colors.transparent,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: 155,
+              margin: const EdgeInsets.only(right: 14, top: 4, bottom: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFF151F32),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: hasFocus ? const Color(0xFFFFB703) : const Color(0xFF233554),
+                  width: hasFocus ? 2.5 : 1,
+                ),
+                boxShadow: hasFocus
+                    ? [
+                        BoxShadow(
+                          color: const Color(0xFFFFB703).withOpacity(0.35),
+                          blurRadius: 8,
+                          spreadRadius: 1,
+                        )
+                      ]
+                    : [],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    item.logo.isNotEmpty
+                        ? Image.network(
+                            item.logo,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Center(
+                              child: Icon(Icons.play_circle_outline, size: 36, color: Colors.white30),
+                            ),
+                          )
+                        : const Center(
+                            child: Icon(Icons.play_circle_outline, size: 36, color: Colors.white30),
+                          ),
+                    // Dark gradient overlay
+                    Container(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                          colors: [Colors.black90, Colors.transparent],
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 8,
+                      left: 8,
+                      right: 8,
+                      child: Text(
+                        item.name,
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
       ),
     );
   }
@@ -266,8 +393,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 boxShadow: [
                   BoxShadow(
                     color: hasFocus 
-                        ? const Color(0xFFFFB703).withOpacity(0.4)
-                        : color.withOpacity(0.05),
+                    ? const Color(0xFFFFB703).withOpacity(0.4)
+                    : color.withOpacity(0.05),
                     blurRadius: hasFocus ? 16 : 8,
                     offset: const Offset(0, 4),
                   )

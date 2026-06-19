@@ -164,27 +164,50 @@ class StorageService {
     return 'history_${account.url.hashCode}_${account.username.hashCode}';
   }
 
-  static Future<List<String>> getHistory(Account account) async {
-    final prefs = await SharedPreferences.getInstance();
-    final key = _getHistoryKey(account);
-    return prefs.getStringList(key) ?? [];
-  }
-
-  static Future<void> addToHistory(Account account, String url) async {
+  static Future<List<Channel>> getHistory(Account account) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final key = _getHistoryKey(account);
-      List<String> history = prefs.getStringList(key) ?? [];
+      final list = prefs.getStringList(key) ?? [];
+      return list.map((e) {
+        try {
+          return Channel.fromJson(json.decode(e) as Map<String, dynamic>);
+        } catch (err) {
+          // Fallback en caso de que sea un historial antiguo con URLs planas
+          return Channel(name: "Canal", group: "Historial", logo: "", url: e);
+        }
+      }).toList();
+    } catch (e) {
+      print("Error getting history: $e");
+      return [];
+    }
+  }
+
+  static Future<void> addToHistory(Account account, Channel channel) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = _getHistoryKey(account);
+      final list = prefs.getStringList(key) ?? [];
       
-      // Mover al inicio si ya existe
-      history.remove(url);
-      history.insert(0, url);
-      
+      List<Channel> history = list.map((e) {
+        try {
+          return Channel.fromJson(json.decode(e) as Map<String, dynamic>);
+        } catch (err) {
+          return Channel(name: "Canal", group: "Historial", logo: "", url: e);
+        }
+      }).toList();
+
+      // Evitar duplicados por URL de transmisión
+      history.removeWhere((c) => c.url == channel.url);
+      history.insert(0, channel);
+
       // Limitar a los últimos 15 elementos
       if (history.length > 15) {
         history = history.sublist(0, 15);
       }
-      await prefs.setStringList(key, history);
+
+      final List<String> encoded = history.map((c) => json.encode(c.toJson())).toList();
+      await prefs.setStringList(key, encoded);
     } catch (e) {
       print("Error adding to history: $e");
     }
