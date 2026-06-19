@@ -14,8 +14,8 @@ class ApiService {
     String? currentLogo;
 
     // Expresiones regulares más robustas para atributos M3U
-    final groupRegex = RegExp(r'group-title=["\']([^"\']+)["\']', caseSensitive: false);
-    final logoRegex = RegExp(r'tvg-logo=["\']([^"\']+)["\']', caseSensitive: false);
+    final groupRegex = RegExp(r'''group-title=["']([^"']+)["']''', caseSensitive: false);
+    final logoRegex = RegExp(r'''tvg-logo=["']([^"']+)["']''', caseSensitive: false);
 
     for (var line in lines) {
       line = line.trim();

@@ -377,7 +377,7 @@ class _SeriesScreenState extends State<SeriesScreen> {
                           gradient: LinearGradient(
                             begin: Alignment.bottomCenter,
                             end: Alignment.topCenter,
-                            colors: [Colors.black90, Colors.transparent],
+                            colors: [Colors.black87, Colors.transparent],
                           ),
                         ),
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
