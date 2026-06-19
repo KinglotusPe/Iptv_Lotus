@@ -12,7 +12,7 @@ class PlayerScreen extends StatefulWidget {
   final List<Channel> channels;
   final int initialIndex;
 
-  const PlayerScreen({
+  PlayerScreen({
     super.key,
     List<Channel>? channels,
     int? initialIndex,

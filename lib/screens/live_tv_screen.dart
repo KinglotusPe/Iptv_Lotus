@@ -59,7 +59,7 @@ class _LiveTvScreenState extends State<LiveTvScreen> {
         StorageService.getHistory(_account!),
       ]);
       _favorites = (resultsFavHist[0] as List<String>).toSet();
-      _history = resultsFavHist[1] as List<String>;
+      _history = (resultsFavHist[1] as List<Channel>).map((c) => c.url).toList();
 
       List<Channel> channels = [];
       Map<String, String> catMap = {};
@@ -140,7 +140,7 @@ class _LiveTvScreenState extends State<LiveTvScreen> {
     final histList = await StorageService.getHistory(_account!);
     setState(() {
       _favorites = favList.toSet();
-      _history = histList;
+      _history = histList.map((c) => c.url).toList();
     });
   }
 

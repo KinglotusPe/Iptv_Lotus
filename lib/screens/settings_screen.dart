@@ -75,9 +75,8 @@ class SettingsScreen extends StatelessWidget {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text("Caché local borrada con éxito"),
+                                content: Text("Caché local borrada con éxito", style: TextStyle(color: Colors.black)),
                                 backgroundColor: Color(0xFFFFB703),
-                                foregroundColor: Colors.black,
                               ),
                             );
                           }
