@@ -1,4 +1,0 @@
-flet>=0.25.0
-requests
-qrcode
-flet-video
