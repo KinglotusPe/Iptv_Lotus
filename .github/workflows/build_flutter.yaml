@@ -34,6 +34,9 @@ jobs:
       - name: Patch Android Manifest (HTTP Support)
         run: python scripts/patch_manifest.py
 
+      - name: Patch Android Signing (Consistent Keystore)
+        run: python scripts/patch_signing.py
+
       - name: Generate App Icons
         run: flutter pub run flutter_launcher_icons
 

@@ -146,13 +146,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                      child: GridView(
-                        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: 240, 
-                          childAspectRatio: 1.35, 
-                          crossAxisSpacing: 20,
-                          mainAxisSpacing: 20,
-                        ),
+                      child: Builder(
+                        builder: (context) {
+                          final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+                          return GridView(
+                            physics: const ClampingScrollPhysics(),
+                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: isLandscape ? 4 : 2, 
+                              childAspectRatio: isLandscape ? 1.55 : 1.35, 
+                              crossAxisSpacing: 20,
+                              mainAxisSpacing: 20,
+                            ),
                         children: [
                           _buildMenuCard(
                             context: context,
@@ -183,9 +187,11 @@ class _HomeScreenState extends State<HomeScreen> {
                             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
                           ),
                         ],
-                      ),
-                    ),
+                      );
+                    }
                   ),
+                ),
+              ),
                   
                   // Footer info
                   Padding(

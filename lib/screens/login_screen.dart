@@ -54,6 +54,73 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    
+    Widget logoColumn = Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(Icons.play_circle_filled, size: 70, color: Color(0xFFFFB703)),
+        const SizedBox(height: 10),
+        Text(
+          "LotusPlay",
+          style: GoogleFonts.outfit(
+            fontSize: 32,
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFFFFB703),
+            letterSpacing: 1.2,
+          ),
+        ),
+        Text(
+          "IPTV Premium Player",
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            color: Colors.white54,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+
+    Widget formCard = Card(
+      elevation: 8,
+      color: const Color(0xFF151F32).withOpacity(0.85),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: const BorderSide(color: Color(0xFF233554), width: 1.5),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TabBar(
+              controller: _tabController,
+              indicatorColor: const Color(0xFFFFB703),
+              labelColor: const Color(0xFFFFB703),
+              unselectedLabelColor: Colors.white38,
+              labelStyle: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14),
+              unselectedLabelStyle: GoogleFonts.inter(fontWeight: FontWeight.normal, fontSize: 14),
+              indicatorSize: TabBarIndicatorSize.tab,
+              tabs: const [
+                Tab(text: "Xtream Codes"),
+                Tab(text: "Lista M3U"),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Flexible(
+              child: SingleChildScrollView(
+                child: AnimatedSize(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  child: _currentIndex == 0 ? _buildXtreamForm() : _buildM3uForm(),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -69,67 +136,38 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         ),
         child: SafeArea(
           child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 500),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-                child: Card(
-                  elevation: 8,
-                  color: const Color(0xFF151F32).withOpacity(0.85),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    side: const BorderSide(color: Color(0xFF233554), width: 1.5),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
+            child: isLandscape
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 16.0),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        const Icon(Icons.play_circle_filled, size: 65, color: Color(0xFFFFB703)),
-                        const SizedBox(height: 10),
-                        Text(
-                          "LotusPlay",
-                          style: GoogleFonts.outfit(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFFFFB703),
-                            letterSpacing: 1.2,
-                          ),
+                        Expanded(
+                          flex: 4,
+                          child: logoColumn,
                         ),
-                        Text(
-                          "IPTV Premium Player",
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            color: Colors.white54,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 25),
-                        TabBar(
-                          controller: _tabController,
-                          indicatorColor: const Color(0xFFFFB703),
-                          labelColor: const Color(0xFFFFB703),
-                          unselectedLabelColor: Colors.white38,
-                          labelStyle: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15),
-                          unselectedLabelStyle: GoogleFonts.inter(fontWeight: FontWeight.normal, fontSize: 15),
-                          indicatorSize: TabBarIndicatorSize.tab,
-                          tabs: const [
-                            Tab(text: "Xtream Codes"),
-                            Tab(text: "Lista M3U"),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-                        AnimatedSize(
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                          child: _currentIndex == 0 ? _buildXtreamForm() : _buildM3uForm(),
+                        const SizedBox(width: 32),
+                        Expanded(
+                          flex: 6,
+                          child: formCard,
                         ),
                       ],
                     ),
+                  )
+                : ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 500),
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          logoColumn,
+                          const SizedBox(height: 20),
+                          formCard,
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            ),
           ),
         ),
       ),
