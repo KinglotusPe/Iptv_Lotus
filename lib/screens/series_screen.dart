@@ -21,6 +21,7 @@ class _SeriesScreenState extends State<SeriesScreen> {
   List<Channel> _series = [];
   Map<String, String> _categoryMap = {};
   List<String> _categories = [];
+  Set<String> _favorites = {};
   
   String _selectedCategory = "Todas";
   String _searchQuery = "";
@@ -38,8 +39,11 @@ class _SeriesScreenState extends State<SeriesScreen> {
       return;
     }
 
+    final favList = await StorageService.getFavorites();
+
     setState(() {
       _account = account;
+      _favorites = favList.toSet();
       _isLoading = true;
       _errorMessage = null;
     });
@@ -82,7 +86,7 @@ class _SeriesScreenState extends State<SeriesScreen> {
         }
       }
 
-      final Set<String> cats = {"Todas"};
+      final Set<String> cats = {"Todas", "Favoritos"};
       for (var s in series) {
         cats.add(s.group);
       }
@@ -91,14 +95,16 @@ class _SeriesScreenState extends State<SeriesScreen> {
         _series = series;
         _categoryMap = catMap;
         _categories = cats.toList()..sort((a, b) {
-             if (a == "Todas") return -1;
-             if (b == "Todas") return 1;
+             if (a == "Todas" || a == "Favoritos") return -1;
+             if (b == "Todas" || b == "Favoritos") return 1;
              final nameA = _categoryMap[a] ?? a;
              final nameB = _categoryMap[b] ?? b;
              return nameA.compareTo(nameB);
         });
         
         _categories.remove("Todas");
+        _categories.remove("Favoritos");
+        _categories.insert(0, "Favoritos");
         _categories.insert(0, "Todas");
         _isLoading = false;
       });
@@ -110,8 +116,18 @@ class _SeriesScreenState extends State<SeriesScreen> {
     }
   }
 
+  Future<void> _reloadFavorites() async {
+    final favList = await StorageService.getFavorites();
+    if (mounted) {
+      setState(() {
+        _favorites = favList.toSet();
+      });
+    }
+  }
+
   String _getCategoryName(String id) {
      if (id == "Todas") return "Todas las Categorías";
+     if (id == "Favoritos") return "★ Favoritos";
      return _categoryMap[id] ?? id;
   }
 
@@ -203,6 +219,8 @@ class _SeriesScreenState extends State<SeriesScreen> {
     List<Channel> displayedSeries = [];
     if (_selectedCategory == "Todas") {
       displayedSeries = _series;
+    } else if (_selectedCategory == "Favoritos") {
+      displayedSeries = _series.where((s) => _favorites.contains(s.url)).toList();
     } else {
       displayedSeries = _series.where((s) => s.group == _selectedCategory).toList();
     }
@@ -246,7 +264,14 @@ class _SeriesScreenState extends State<SeriesScreen> {
                  prefixIcon: const Icon(Icons.search, color: Colors.purpleAccent),
                  filled: true,
                  fillColor: const Color(0xFF090D16),
-                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
+                 enabledBorder: OutlineInputBorder(
+                   borderRadius: BorderRadius.circular(30),
+                   borderSide: const BorderSide(color: Color(0xFF233554), width: 1.5),
+                 ),
+                 focusedBorder: OutlineInputBorder(
+                   borderRadius: BorderRadius.circular(30),
+                   borderSide: const BorderSide(color: Colors.purpleAccent, width: 2.0),
+                 ),
                  contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
                ),
                onChanged: (val) => setState(() => _searchQuery = val),
@@ -353,12 +378,33 @@ class _SeriesScreenState extends State<SeriesScreen> {
   }
 
   Widget _buildSeriesCard(Channel serie) {
+    final isFav = _favorites.contains(serie.url);
     return Focus(
       child: Builder(
         builder: (context) {
           final hasFocus = Focus.of(context).hasFocus;
           return GestureDetector(
             onTap: () => _showEpisodes(serie),
+            onLongPress: () async {
+              await StorageService.toggleFavorite(serie.url);
+              await _reloadFavorites();
+              if (context.mounted) {
+                final nextFav = _favorites.contains(serie.url);
+                ScaffoldMessenger.of(context).clearSnackBars();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      nextFav 
+                          ? "Añadida '${serie.name}' a Favoritos" 
+                          : "Eliminada '${serie.name}' de Favoritos",
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    duration: const Duration(seconds: 2),
+                    backgroundColor: nextFav ? Colors.green : Colors.purpleAccent,
+                  ),
+                );
+              }
+            },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 150),
               curve: Curves.easeInOut,
@@ -385,6 +431,23 @@ class _SeriesScreenState extends State<SeriesScreen> {
                   fit: StackFit.expand,
                   children: [
                     Container(color: const Color(0xFF151F32)),
+                    if (isFav)
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.black87,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.star,
+                            color: Color(0xFFFFB703),
+                            size: 16,
+                          ),
+                        ),
+                      ),
                     serie.logo.isNotEmpty
                         ? Image.network(
                             serie.logo,

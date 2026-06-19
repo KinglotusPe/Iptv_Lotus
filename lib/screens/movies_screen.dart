@@ -21,6 +21,7 @@ class _MoviesScreenState extends State<MoviesScreen> {
   List<Channel> _movies = [];
   Map<String, String> _categoryMap = {};
   List<String> _categories = [];
+  Set<String> _favorites = {};
   
   String _selectedCategory = "Todas";
   String _searchQuery = "";
@@ -38,8 +39,11 @@ class _MoviesScreenState extends State<MoviesScreen> {
       return;
     }
 
+    final favList = await StorageService.getFavorites();
+
     setState(() {
       _account = account;
+      _favorites = favList.toSet();
       _isLoading = true;
       _errorMessage = null;
     });
@@ -82,7 +86,7 @@ class _MoviesScreenState extends State<MoviesScreen> {
         }
       }
 
-      final Set<String> cats = {"Todas"};
+      final Set<String> cats = {"Todas", "Favoritos"};
       for (var m in movies) {
         cats.add(m.group);
       }
@@ -91,14 +95,16 @@ class _MoviesScreenState extends State<MoviesScreen> {
         _movies = movies;
         _categoryMap = catMap;
         _categories = cats.toList()..sort((a, b) {
-             if (a == "Todas") return -1;
-             if (b == "Todas") return 1;
+             if (a == "Todas" || a == "Favoritos") return -1;
+             if (b == "Todas" || b == "Favoritos") return 1;
              final nameA = _categoryMap[a] ?? a;
              final nameB = _categoryMap[b] ?? b;
              return nameA.compareTo(nameB);
         });
         
         _categories.remove("Todas");
+        _categories.remove("Favoritos");
+        _categories.insert(0, "Favoritos");
         _categories.insert(0, "Todas");
         _isLoading = false;
       });
@@ -110,8 +116,18 @@ class _MoviesScreenState extends State<MoviesScreen> {
     }
   }
 
+  Future<void> _reloadFavorites() async {
+    final favList = await StorageService.getFavorites();
+    if (mounted) {
+      setState(() {
+        _favorites = favList.toSet();
+      });
+    }
+  }
+
   String _getCategoryName(String id) {
      if (id == "Todas") return "Todas las Categorías";
+     if (id == "Favoritos") return "★ Favoritos";
      return _categoryMap[id] ?? id;
   }
 
@@ -203,6 +219,8 @@ class _MoviesScreenState extends State<MoviesScreen> {
     List<Channel> displayedMovies = [];
     if (_selectedCategory == "Todas") {
       displayedMovies = _movies;
+    } else if (_selectedCategory == "Favoritos") {
+      displayedMovies = _movies.where((m) => _favorites.contains(m.url)).toList();
     } else {
       displayedMovies = _movies.where((m) => m.group == _selectedCategory).toList();
     }
@@ -246,7 +264,14 @@ class _MoviesScreenState extends State<MoviesScreen> {
                  prefixIcon: const Icon(Icons.search, color: Colors.redAccent),
                  filled: true,
                  fillColor: const Color(0xFF090D16),
-                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
+                 enabledBorder: OutlineInputBorder(
+                   borderRadius: BorderRadius.circular(30),
+                   borderSide: const BorderSide(color: Color(0xFF233554), width: 1.5),
+                 ),
+                 focusedBorder: OutlineInputBorder(
+                   borderRadius: BorderRadius.circular(30),
+                   borderSide: const BorderSide(color: Colors.redAccent, width: 2.0),
+                 ),
                  contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
                ),
                onChanged: (val) => setState(() => _searchQuery = val),
@@ -353,13 +378,35 @@ class _MoviesScreenState extends State<MoviesScreen> {
   }
 
   Widget _buildMovieCard(Channel movie) {
+    final isFav = _favorites.contains(movie.url);
     return Focus(
       child: Builder(
         builder: (context) {
           final hasFocus = Focus.of(context).hasFocus;
           return GestureDetector(
             onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerScreen(channel: movie)));
+              Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerScreen(channel: movie)))
+                  .then((_) => _reloadFavorites());
+            },
+            onLongPress: () async {
+              await StorageService.toggleFavorite(movie.url);
+              await _reloadFavorites();
+              if (context.mounted) {
+                final nextFav = _favorites.contains(movie.url);
+                ScaffoldMessenger.of(context).clearSnackBars();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      nextFav 
+                          ? "Añadida '${movie.name}' a Favoritos" 
+                          : "Eliminada '${movie.name}' de Favoritos",
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    duration: const Duration(seconds: 2),
+                    backgroundColor: nextFav ? Colors.green : Colors.redAccent,
+                  ),
+                );
+              }
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 150),
@@ -387,6 +434,23 @@ class _MoviesScreenState extends State<MoviesScreen> {
                   fit: StackFit.expand,
                   children: [
                     Container(color: const Color(0xFF151F32)),
+                    if (isFav)
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.black87,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.star,
+                            color: Color(0xFFFFB703),
+                            size: 16,
+                          ),
+                        ),
+                      ),
                     movie.logo.isNotEmpty
                         ? Image.network(
                             movie.logo,

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -102,6 +103,7 @@ class _AppStarterState extends State<AppStarter> with SingleTickerProviderStateM
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
+  bool _isOffline = false;
 
   @override
   void initState() {
@@ -136,7 +138,32 @@ class _AppStarterState extends State<AppStarter> with SingleTickerProviderStateM
     super.dispose();
   }
 
+  Future<bool> _hasNetwork() async {
+    try {
+      final result = await InternetAddress.lookup('dns.google').timeout(const Duration(seconds: 2));
+      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> _checkLogin() async {
+    final hasInternet = await _hasNetwork();
+    if (!hasInternet) {
+      if (mounted) {
+        setState(() {
+          _isOffline = true;
+        });
+      }
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        _isOffline = false;
+      });
+    }
+
     // Run checks in parallel with splash animation
     final results = await Future.wait([
       StorageService.getActiveAccount(),
@@ -160,6 +187,90 @@ class _AppStarterState extends State<AppStarter> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
+    if (_isOffline) {
+      return Scaffold(
+        backgroundColor: const Color(0xFF090D16),
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFF090D16),
+                Color(0xFF0F172A),
+              ],
+            ),
+          ),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.redAccent.withOpacity(0.4), width: 2),
+                    ),
+                    child: const Icon(
+                      Icons.wifi_off_rounded, 
+                      size: 64, 
+                      color: Colors.redAccent,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    "Sin Conexión a Internet",
+                    style: GoogleFonts.outfit(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "LotusPlay requiere una conexión activa a Internet para poder autenticar perfiles y cargar los contenidos IPTV del servidor.",
+                    style: GoogleFonts.inter(color: Colors.white54, fontSize: 13),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 32),
+                  Focus(
+                    child: Builder(
+                      builder: (context) {
+                        final hasFocus = Focus.of(context).hasFocus;
+                        return ElevatedButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _isOffline = false;
+                            });
+                            _checkLogin();
+                          },
+                          icon: const Icon(Icons.refresh),
+                          label: const Text("Reintentar Conexión"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: hasFocus ? const Color(0xFFFFB703) : const Color(0xFF151F32),
+                            foregroundColor: hasFocus ? Colors.black : Colors.white,
+                            side: BorderSide(
+                              color: hasFocus ? const Color(0xFFFFB703) : const Color(0xFF233554),
+                              width: 1.5,
+                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          ),
+                        );
+                      }
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFF090D16),
       body: Container(

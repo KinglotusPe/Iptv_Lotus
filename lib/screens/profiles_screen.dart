@@ -210,6 +210,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
           final hasFocus = Focus.of(context).hasFocus;
           return GestureDetector(
             onTap: () => _selectAccount(acc),
+            onLongPress: () => _confirmDelete(acc),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeInOut,
@@ -264,19 +265,30 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
                       Positioned(
                         top: 0,
                         right: 0,
-                        child: GestureDetector(
-                          onTap: () => _confirmDelete(acc),
-                          child: Container(
-                            padding: const EdgeInsets.all(5),
-                            decoration: const BoxDecoration(
-                              color: Colors.black87,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.close,
-                              color: Colors.redAccent,
-                              size: 16,
-                            ),
+                        child: Focus(
+                          child: Builder(
+                            builder: (context) {
+                              final deleteHasFocus = Focus.of(context).hasFocus;
+                              return GestureDetector(
+                                onTap: () => _confirmDelete(acc),
+                                child: Container(
+                                  padding: const EdgeInsets.all(5),
+                                  decoration: BoxDecoration(
+                                    color: deleteHasFocus ? Colors.redAccent : Colors.black87,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: deleteHasFocus ? Colors.white : Colors.transparent,
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Icon(
+                                    Icons.close,
+                                    color: deleteHasFocus ? Colors.white : Colors.redAccent,
+                                    size: 16,
+                                  ),
+                                ),
+                              );
+                            }
                           ),
                         ),
                       ),

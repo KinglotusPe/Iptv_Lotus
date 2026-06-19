@@ -44,48 +44,98 @@ class _PlayerScreenState extends State<PlayerScreen> {
       _errorMessage = null;
     });
 
+    // 1. Registrar canal en el historial por perfil
     try {
-      // 1. Registrar canal en el historial por perfil
       final account = await StorageService.getActiveAccount();
       if (account != null) {
         await StorageService.addToHistory(account, widget.channel);
       }
+    } catch (err) {
+      print("Error saving to history: $err");
+    }
 
-      // 2. Inicializar VideoPlayer
-      _videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(widget.channel.url));
-      
-      // Timeout de inicialización de 15 segundos para evitar pantallas de carga infinitas
-      await _videoPlayerController.initialize().timeout(const Duration(seconds: 15));
-      
-      _chewieController = ChewieController(
-        videoPlayerController: _videoPlayerController,
-        autoPlay: true,
-        looping: false,
-        aspectRatio: _customAspectRatio,
-        allowFullScreen: true,
-        autoInitialize: true,
-        errorBuilder: (context, errorMessage) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Text(
-                "Error en la reproducción: $errorMessage",
-                style: const TextStyle(color: Colors.white, fontSize: 15),
-                textAlign: TextAlign.center,
+    int retryCount = 0;
+    const int maxRetries = 3;
+    bool successfullyInitialized = false;
+    dynamic lastException;
+
+    while (retryCount < maxRetries && !successfullyInitialized) {
+      if (retryCount > 0) {
+        // Mostrar aviso temporal de reconexión
+        if (mounted) {
+          setState(() {
+            _overlayText = "Reconectando... (Intento $retryCount de $maxRetries)";
+            _overlayIcon = Icons.sync;
+            _overlayOpacity = 1.0;
+          });
+        }
+        
+        // Espera progresiva: 2s, 3s, 5s
+        final int delaySeconds = retryCount == 1 ? 2 : (retryCount == 2 ? 3 : 5);
+        await Future.delayed(Duration(seconds: delaySeconds));
+      }
+
+      try {
+        if (retryCount > 0) {
+          try {
+            await _videoPlayerController.dispose();
+          } catch (_) {}
+        }
+
+        // 2. Inicializar VideoPlayer
+        _videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(widget.channel.url));
+        
+        // Timeout de inicialización de 12 segundos para evitar esperas infinitas
+        await _videoPlayerController.initialize().timeout(const Duration(seconds: 12));
+        
+        _chewieController = ChewieController(
+          videoPlayerController: _videoPlayerController,
+          autoPlay: true,
+          looping: false,
+          aspectRatio: _customAspectRatio,
+          allowFullScreen: true,
+          autoInitialize: true,
+          errorBuilder: (context, errorMessage) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  "Error en la reproducción: $errorMessage",
+                  style: const TextStyle(color: Colors.white, fontSize: 15),
+                  textAlign: TextAlign.center,
+                ),
               ),
-            ),
-          );
-        },
-      );
-      
+            );
+          },
+        );
+        
+        successfullyInitialized = true;
+      } catch (e) {
+        lastException = e;
+        retryCount++;
+      }
+    }
+
+    // Ocultar overlay temporal de reconexión si se mostró
+    if (mounted) {
       setState(() {
-        _isLoading = false;
+        _overlayOpacity = 0.0;
       });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = "No se pudo conectar al canal. Asegúrate de tener conexión a Internet y que la transmisión esté activa.\n\nDetalle: ${e.toString()}";
-      });
+    }
+
+    if (successfullyInitialized) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } else {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = "No se pudo conectar a la transmisión después de $maxRetries intentos de reconexión automática.\n\nAsegúrate de tener conexión a Internet y que la transmisión esté activa.\n\nDetalle: ${lastException.toString()}";
+        });
+      }
     }
   }
 

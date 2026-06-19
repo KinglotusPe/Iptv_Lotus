@@ -212,4 +212,18 @@ class StorageService {
       print("Error adding to history: $e");
     }
   }
+
+  static Future<void> clearCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final keys = prefs.getKeys();
+      for (var key in keys) {
+        if (key.startsWith('cache_')) {
+          await prefs.remove(key);
+        }
+      }
+    } catch (e) {
+      print("Error clearing cache: $e");
+    }
+  }
 }

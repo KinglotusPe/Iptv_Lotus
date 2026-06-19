@@ -282,7 +282,14 @@ class _LiveTvScreenState extends State<LiveTvScreen> {
                  prefixIcon: const Icon(Icons.search, color: Color(0xFFFFB703)),
                  filled: true,
                  fillColor: const Color(0xFF090D16),
-                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
+                 enabledBorder: OutlineInputBorder(
+                   borderRadius: BorderRadius.circular(30),
+                   borderSide: const BorderSide(color: Color(0xFF233554), width: 1.5),
+                 ),
+                 focusedBorder: OutlineInputBorder(
+                   borderRadius: BorderRadius.circular(30),
+                   borderSide: const BorderSide(color: Color(0xFFFFB703), width: 2.0),
+                 ),
                  contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
                ),
                onChanged: (val) => setState(() => _searchQuery = val),
