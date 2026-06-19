@@ -177,7 +177,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           scrollDirection: Axis.horizontal,
                           itemCount: _history.length,
                           itemBuilder: (context, index) {
-                            return _buildHistoryCard(_history[index]);
+                            return _buildHistoryCard(_history, index);
                           },
                         ),
                       ),
@@ -263,7 +263,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildHistoryCard(Channel item) {
+  Widget _buildHistoryCard(List<Channel> history, int index) {
+    final item = history[index];
     return Focus(
       child: Builder(
         builder: (context) {
@@ -272,7 +273,12 @@ class _HomeScreenState extends State<HomeScreen> {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => PlayerScreen(channel: item)),
+                MaterialPageRoute(
+                  builder: (_) => PlayerScreen(
+                    channels: history,
+                    initialIndex: index,
+                  ),
+                ),
               ).then((_) => _loadHistory());
             },
             borderRadius: BorderRadius.circular(12),

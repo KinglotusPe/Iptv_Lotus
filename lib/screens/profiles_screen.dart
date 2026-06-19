@@ -49,6 +49,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
         ),
         actions: [
           TextButton(
+            autofocus: true,
             onPressed: () => Navigator.pop(ctx),
             child: Text("Cancelar", style: TextStyle(color: Colors.grey[400])),
           ),

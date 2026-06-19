@@ -339,7 +339,7 @@ class _LiveTvScreenState extends State<LiveTvScreen> {
                               final channel = displayedChannels[index];
                               final isFav = _favorites.contains(channel.url);
                               
-                              return _buildChannelTile(channel, isFav);
+                              return _buildChannelTile(displayedChannels, index, isFav);
                             },
                           ),
                   ),
@@ -612,6 +612,33 @@ class _LiveTvScreenState extends State<LiveTvScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+                    if (isCurrent) ...[
+                      const SizedBox(height: 8),
+                      Builder(
+                        builder: (context) {
+                          final now = DateTime.now();
+                          final startDt = prog.startTime;
+                          final endDt = prog.endTime;
+                          double progress = 0.0;
+                          if (startDt != null && endDt != null) {
+                            final total = endDt.difference(startDt).inSeconds;
+                            if (total > 0) {
+                              final elapsed = now.difference(startDt).inSeconds;
+                              progress = (elapsed / total).clamp(0.0, 1.0);
+                            }
+                          }
+                          return ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: LinearProgressIndicator(
+                              value: progress,
+                              backgroundColor: Colors.white10,
+                              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFFB703)),
+                              minHeight: 4,
+                            ),
+                          );
+                        },
+                      ),
+                    ],
                     if (prog.description.isNotEmpty) ...[
                       const SizedBox(height: 6),
                       Text(
@@ -673,7 +700,8 @@ class _LiveTvScreenState extends State<LiveTvScreen> {
     );
   }
 
-  Widget _buildChannelTile(Channel channel, bool isFav) {
+  Widget _buildChannelTile(List<Channel> channels, int index, bool isFav) {
+    final channel = channels[index];
     return Focus(
       onFocusChange: (hasFocus) {
         if (hasFocus) {
@@ -743,7 +771,12 @@ class _LiveTvScreenState extends State<LiveTvScreen> {
               onTap: () {
                 Navigator.push(
                   context, 
-                  MaterialPageRoute(builder: (_) => PlayerScreen(channel: channel)),
+                  MaterialPageRoute(
+                    builder: (_) => PlayerScreen(
+                      channels: channels,
+                      initialIndex: index,
+                    ),
+                  ),
                 ).then((_) => _reloadFavoritesAndHistory());
               },
             ),

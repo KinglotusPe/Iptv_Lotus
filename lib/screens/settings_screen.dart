@@ -64,6 +64,7 @@ class SettingsScreen extends StatelessWidget {
                     ),
                     actions: [
                       TextButton(
+                        autofocus: true,
                         onPressed: () => Navigator.pop(ctx),
                         child: Text("Cancelar", style: TextStyle(color: Colors.grey[400])),
                       ),
@@ -108,6 +109,7 @@ class SettingsScreen extends StatelessWidget {
                     content: Text("¿Seguro que quieres borrar todos los favoritos guardados?", style: GoogleFonts.inter(color: Colors.white70)),
                     actions: [
                       TextButton(
+                        autofocus: true,
                         onPressed: () => Navigator.pop(ctx),
                         child: Text("Cancelar", style: TextStyle(color: Colors.grey[400])),
                       ),

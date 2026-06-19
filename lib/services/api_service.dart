@@ -111,13 +111,17 @@ class ApiService {
       
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
-        return data.map((json) => Channel(
-          name: json['name'] ?? "Unknown",
-          group: json['category_id']?.toString() ?? "General",
-          logo: json['stream_icon'] ?? "",
-          url: "$url/movie/$username/$password/${json['stream_id']}.${json['container_extension'] ?? 'mp4'}",
-          streamId: json['stream_id'].toString(),
-        )).toList();
+        return data.map((json) {
+          final String ext = json['container_extension']?.toString() ?? "mp4";
+          final String extSuffix = ext.isNotEmpty ? ".$ext" : "";
+          return Channel(
+            name: json['name'] ?? "Unknown",
+            group: json['category_id']?.toString() ?? "General",
+            logo: json['stream_icon'] ?? "",
+            url: "$url/movie/$username/$password/${json['stream_id']}$extSuffix",
+            streamId: json['stream_id'].toString(),
+          );
+        }).toList();
       }
       return [];
     } catch (e) {
@@ -234,21 +238,22 @@ class ApiService {
           if (episodesMap is Map) {
             episodesMap.forEach((seasonStr, episodesList) {
                if (episodesList is List) {
-                 for (var ep in episodesList) {
-                    final String ext = ep['container_extension'] ?? 'mp4';
-                    final String id = ep['id'].toString();
-                    final String title = ep['title']?.toString() ?? "Episode";
-                    final String season = seasonStr.toString();
-                    final String? cover = ep['info']?['movie_image'];
-                    
-                    allEpisodes.add(Channel(
-                      name: title,
-                      group: "Temporada $season", 
-                      logo: cover ?? "", 
-                      url: "$url/series/$username/$password/$id.$ext",
-                      streamId: id,
-                    ));
-                 }
+                  for (var ep in episodesList) {
+                     final String ext = ep['container_extension']?.toString() ?? "mp4";
+                     final String extSuffix = ext.isNotEmpty ? ".$ext" : "";
+                     final String id = ep['id'].toString();
+                     final String title = ep['title']?.toString() ?? "Episode";
+                     final String season = seasonStr.toString();
+                     final String? cover = ep['info']?['movie_image'];
+                     
+                     allEpisodes.add(Channel(
+                       name: title,
+                       group: "Temporada $season", 
+                       logo: cover ?? "", 
+                       url: "$url/series/$username/$password/$id$extSuffix",
+                       streamId: id,
+                     ));
+                  }
                }
             });
           }

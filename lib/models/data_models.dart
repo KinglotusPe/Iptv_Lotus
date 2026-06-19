@@ -77,6 +77,23 @@ class EpgProgram {
     required this.end,
   });
 
+  DateTime? get startTime => _parseDate(start);
+  DateTime? get endTime => _parseDate(end);
+
+  static DateTime? _parseDate(String dateStr) {
+    if (dateStr.isEmpty) return null;
+    try {
+      return DateTime.parse(dateStr);
+    } catch (_) {
+      try {
+        // Fallback para yyyy-MM-dd HH:mm:ss -> yyyy-MM-ddTHH:mm:ss
+        return DateTime.parse(dateStr.replaceFirst(' ', 'T'));
+      } catch (_) {
+        return null;
+      }
+    }
+  }
+
   factory EpgProgram.fromJson(Map<String, dynamic> json) {
     String desc = json['description'] ?? "";
     String title = json['title'] ?? "";

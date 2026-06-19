@@ -614,7 +614,8 @@ class _SeriesScreenState extends State<SeriesScreen> {
                             ),
                             iconColor: const Color(0xFFFFB703),
                             collapsedIconColor: Colors.white54,
-                            children: seasonEpisodes.map((ep) {
+                            children: List.generate(seasonEpisodes.length, (epIdx) {
+                              final ep = seasonEpisodes[epIdx];
                               return Focus(
                                 child: Builder(
                                   builder: (context) {
@@ -638,7 +639,12 @@ class _SeriesScreenState extends State<SeriesScreen> {
                                           Navigator.pop(context); // Close bottom sheet
                                           Navigator.push(
                                             context, 
-                                            MaterialPageRoute(builder: (_) => PlayerScreen(channel: ep)),
+                                            MaterialPageRoute(
+                                              builder: (_) => PlayerScreen(
+                                                channels: seasonEpisodes,
+                                                initialIndex: epIdx,
+                                              ),
+                                            ),
                                           );
                                         },
                                       ),
@@ -646,7 +652,7 @@ class _SeriesScreenState extends State<SeriesScreen> {
                                   }
                                 ),
                               );
-                            }).toList(),
+                            }),
                           ),
                         );
                       },

@@ -323,8 +323,7 @@ class _MoviesScreenState extends State<MoviesScreen> {
                             ),
                             itemCount: displayedMovies.length,
                             itemBuilder: (context, index) {
-                              final movie = displayedMovies[index];
-                              return _buildMovieCard(movie);
+                              return _buildMovieCard(displayedMovies, index);
                             },
                           ),
                   ),
@@ -377,7 +376,8 @@ class _MoviesScreenState extends State<MoviesScreen> {
     );
   }
 
-  Widget _buildMovieCard(Channel movie) {
+  Widget _buildMovieCard(List<Channel> movies, int index) {
+    final movie = movies[index];
     final isFav = _favorites.contains(movie.url);
     return Focus(
       child: Builder(
@@ -385,8 +385,15 @@ class _MoviesScreenState extends State<MoviesScreen> {
           final hasFocus = Focus.of(context).hasFocus;
           return GestureDetector(
             onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerScreen(channel: movie)))
-                  .then((_) => _reloadFavorites());
+              Navigator.push(
+                context, 
+                MaterialPageRoute(
+                  builder: (_) => PlayerScreen(
+                    channels: movies,
+                    initialIndex: index,
+                  ),
+                ),
+              ).then((_) => _reloadFavorites());
             },
             onLongPress: () async {
               await StorageService.toggleFavorite(movie.url);
