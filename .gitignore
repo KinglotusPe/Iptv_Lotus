@@ -27,3 +27,7 @@ env/
 *.njsproj
 *.sln
 *.swp
+
+# Keystores and Certificates
+*.jks
+*.keystore

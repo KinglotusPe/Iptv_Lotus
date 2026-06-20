@@ -27,9 +27,9 @@ def patch_signing():
     signingConfigs {
         release {
             storeFile file('key.jks')
-            storePassword 'lotusplay123'
-            keyAlias 'lotusplay'
-            keyPassword 'lotusplay123'
+            storePassword System.getenv("LOTUSPLAY_KEYSTORE_PASSWORD") ?: 'lotusplay123'
+            keyAlias System.getenv("LOTUSPLAY_KEY_ALIAS") ?: 'lotusplay'
+            keyPassword System.getenv("LOTUSPLAY_KEY_PASSWORD") ?: 'lotusplay123'
         }
     }
 """

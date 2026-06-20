@@ -454,15 +454,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
               ],
             ],
           ),
-          body: Center(
+          body: SizedBox.expand(
             child: Stack(
               alignment: Alignment.center,
               children: [
                 // Video o Estado de Carga / Error
                 Positioned.fill(
-                  child: Center(
-                    child: _isLoading
-                        ? Column(
+                  child: _isLoading
+                      ? Center(
+                          child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               const CircularProgressIndicator(color: Color(0xFFFFB703)),
@@ -472,9 +472,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                 style: GoogleFonts.inter(color: Colors.white60, fontSize: 14),
                               ),
                             ],
-                          )
-                        : (_errorMessage != null
-                            ? Padding(
+                          ),
+                        )
+                      : (_errorMessage != null
+                          ? Center(
+                              child: Padding(
                                 padding: const EdgeInsets.all(24.0),
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
@@ -514,83 +516,85 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                     )
                                   ],
                                 ),
-                              )
-                            : (_chewieController != null && _videoPlayerController.value.isInitialized
-                                ? Stack(
-                                    alignment: Alignment.center,
-                                    children: [
-                                      Positioned.fill(child: Chewie(controller: _chewieController!)),
-                                      
-                                      // Pure Flutter Screen Brightness Simulation Overlay
-                                      Positioned.fill(
-                                        child: IgnorePointer(
-                                          child: AnimatedContainer(
-                                            duration: const Duration(milliseconds: 50),
-                                            color: Colors.black.withOpacity((1.0 - _screenBrightness).clamp(0.0, 0.85)),
-                                          ),
+                              ),
+                            )
+                          : (_chewieController != null && _videoPlayerController.value.isInitialized
+                              ? Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    Positioned.fill(child: Chewie(controller: _chewieController!)),
+                                    
+                                    // Pure Flutter Screen Brightness Simulation Overlay
+                                    Positioned.fill(
+                                      child: IgnorePointer(
+                                        child: AnimatedContainer(
+                                          duration: const Duration(milliseconds: 50),
+                                          color: Colors.black.withOpacity((1.0 - _screenBrightness).clamp(0.0, 0.85)),
                                         ),
                                       ),
+                                    ),
 
-                                      // Custom Gesture Overlay (covers top 80% to avoid overlapping bottom timeline controls)
-                                      Positioned(
-                                        top: 0,
-                                        left: 0,
-                                        right: 0,
-                                        bottom: 80,
-                                        child: Row(
-                                          children: [
-                                            // Left half: Brightness Gestures
-                                            Expanded(
-                                              child: GestureDetector(
-                                                behavior: HitTestBehavior.translucent,
-                                                onDoubleTap: () => _seekRelative(-10),
-                                                onTap: _togglePlayPause,
-                                                onVerticalDragUpdate: (details) {
-                                                  final screenHeight = MediaQuery.of(context).size.height;
-                                                  if (screenHeight > 0) {
-                                                    final change = -details.primaryDelta! / screenHeight;
-                                                    setState(() {
-                                                      _screenBrightness = (_screenBrightness + change).clamp(0.1, 1.0);
-                                                    });
-                                                    _triggerOverlay(
-                                                      Icons.brightness_6, 
-                                                      "Brillo: ${(_screenBrightness * 100).toInt()}%"
-                                                    );
-                                                  }
-                                                },
-                                              ),
+                                    // Custom Gesture Overlay (covers top 80% to avoid overlapping bottom timeline controls)
+                                    Positioned(
+                                      top: 0,
+                                      left: 0,
+                                      right: 0,
+                                      bottom: 80,
+                                      child: Row(
+                                        children: [
+                                          // Left half: Brightness Gestures
+                                          Expanded(
+                                            child: GestureDetector(
+                                              behavior: HitTestBehavior.translucent,
+                                              onDoubleTap: () => _seekRelative(-10),
+                                              onTap: _togglePlayPause,
+                                              onVerticalDragUpdate: (details) {
+                                                final screenHeight = MediaQuery.of(context).size.height;
+                                                if (screenHeight > 0) {
+                                                  final change = -details.primaryDelta! / screenHeight;
+                                                  setState(() {
+                                                    _screenBrightness = (_screenBrightness + change).clamp(0.1, 1.0);
+                                                  });
+                                                  _triggerOverlay(
+                                                    Icons.brightness_6, 
+                                                    "Brillo: ${(_screenBrightness * 100).toInt()}%"
+                                                  );
+                                                }
+                                              },
                                             ),
-                                            // Right half: Volume Gestures
-                                            Expanded(
-                                              child: GestureDetector(
-                                                behavior: HitTestBehavior.translucent,
-                                                onDoubleTap: () => _seekRelative(10),
-                                                onTap: _togglePlayPause,
-                                                onVerticalDragUpdate: (details) {
-                                                  final screenHeight = MediaQuery.of(context).size.height;
-                                                  if (screenHeight > 0) {
-                                                    final change = -details.primaryDelta! / screenHeight;
-                                                    setState(() {
-                                                      _currentVolume = (_currentVolume + change).clamp(0.0, 1.0);
-                                                    });
-                                                    _videoPlayerController.setVolume(_currentVolume);
-                                                    _triggerOverlay(
-                                                      _currentVolume == 0.0 
-                                                          ? Icons.volume_mute 
-                                                          : (_currentVolume < 0.5 ? Icons.volume_down : Icons.volume_up),
-                                                      "Volumen: ${(_currentVolume * 100).toInt()}%"
-                                                    );
-                                                  }
-                                                },
-                                              ),
+                                          ),
+                                          // Right half: Volume Gestures
+                                          Expanded(
+                                            child: GestureDetector(
+                                              behavior: HitTestBehavior.translucent,
+                                              onDoubleTap: () => _seekRelative(10),
+                                              onTap: _togglePlayPause,
+                                              onVerticalDragUpdate: (details) {
+                                                final screenHeight = MediaQuery.of(context).size.height;
+                                                if (screenHeight > 0) {
+                                                  final change = -details.primaryDelta! / screenHeight;
+                                                  setState(() {
+                                                    _currentVolume = (_currentVolume + change).clamp(0.0, 1.0);
+                                                  });
+                                                  _videoPlayerController.setVolume(_currentVolume);
+                                                  _triggerOverlay(
+                                                    _currentVolume == 0.0 
+                                                        ? Icons.volume_mute 
+                                                        : (_currentVolume < 0.5 ? Icons.volume_down : Icons.volume_up),
+                                                    "Volumen: ${(_currentVolume * 100).toInt()}%"
+                                                  );
+                                                }
+                                              },
                                             ),
-                                          ],
-                                        ),
+                                          ),
+                                        ],
                                       ),
-                                    ],
-                                  )
-                                : const CircularProgressIndicator(color: Color(0xFFFFB703)))),
-                  ),
+                                    ),
+                                  ],
+                                )
+                              : const Center(
+                                  child: CircularProgressIndicator(color: Color(0xFFFFB703)),
+                                ))),
                 ),
 
                 // Floating Buttons Overlay

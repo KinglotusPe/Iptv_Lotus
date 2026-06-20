@@ -55,6 +55,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   @override
   Widget build(BuildContext context) {
     final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final keyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
     
     Widget logoColumn = Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -107,19 +108,71 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
               ],
             ),
             const SizedBox(height: 16),
-            Flexible(
-              child: SingleChildScrollView(
-                child: AnimatedSize(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                  child: _currentIndex == 0 ? _buildXtreamForm() : _buildM3uForm(),
-                ),
-              ),
-            ),
+            keyboardOpen || !isLandscape
+                ? AnimatedSize(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                    child: _currentIndex == 0 ? _buildXtreamForm() : _buildM3uForm(),
+                  )
+                : Flexible(
+                    child: SingleChildScrollView(
+                      child: AnimatedSize(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                        child: _currentIndex == 0 ? _buildXtreamForm() : _buildM3uForm(),
+                      ),
+                    ),
+                  ),
           ],
         ),
       ),
     );
+
+    Widget content;
+    if (isLandscape) {
+      if (keyboardOpen) {
+        content = ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 500),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+            child: formCard,
+          ),
+        );
+      } else {
+        content = Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 16.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                flex: 4,
+                child: logoColumn,
+              ),
+              const SizedBox(width: 32),
+              Expanded(
+                flex: 6,
+                child: formCard,
+              ),
+            ],
+          ),
+        );
+      }
+    } else {
+      content = ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 500),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              logoColumn,
+              const SizedBox(height: 20),
+              formCard,
+            ],
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       body: Container(
@@ -136,38 +189,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         ),
         child: SafeArea(
           child: Center(
-            child: isLandscape
-                ? Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 16.0),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          flex: 4,
-                          child: logoColumn,
-                        ),
-                        const SizedBox(width: 32),
-                        Expanded(
-                          flex: 6,
-                          child: formCard,
-                        ),
-                      ],
-                    ),
-                  )
-                : ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 500),
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          logoColumn,
-                          const SizedBox(height: 20),
-                          formCard,
-                        ],
-                      ),
-                    ),
-                  ),
+            child: content,
           ),
         ),
       ),

@@ -1,18 +1,42 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:convert';
 import '../models/data_models.dart';
 
 class StorageService {
   static const String KEY_ACCOUNTS = 'iptv_accounts';
   static const String KEY_ACTIVE_ACCOUNT = 'active_account';
+  static const _secureStorage = FlutterSecureStorage();
+
+  static String _getPasswordKey(String url, String username) {
+    return 'pass_${url.hashCode}_${username.hashCode}';
+  }
 
   static Future<void> saveAccount(Account account) async {
     final prefs = await SharedPreferences.getInstance();
     List<String> accounts = prefs.getStringList(KEY_ACCOUNTS) ?? [];
-    // Avoid duplicates by URL
-    accounts.removeWhere((e) => Account.fromJson(json.decode(e)).url == account.url);
     
-    accounts.add(json.encode(account.toJson()));
+    // Save password securely
+    if (account.password.isNotEmpty) {
+      final pwdKey = _getPasswordKey(account.url, account.username);
+      await _secureStorage.write(key: pwdKey, value: account.password);
+    }
+    
+    final accountWithoutPassword = Account(
+      name: account.name,
+      url: account.url,
+      username: account.username,
+      password: '', // Do NOT store password in SharedPreferences
+      type: account.type,
+    );
+
+    // Avoid duplicates by URL and Username
+    accounts.removeWhere((e) {
+      final acc = Account.fromJson(json.decode(e));
+      return acc.url == account.url && acc.username == account.username;
+    });
+    
+    accounts.add(json.encode(accountWithoutPassword.toJson()));
     await prefs.setStringList(KEY_ACCOUNTS, accounts);
     
     // Set as active
@@ -22,12 +46,76 @@ class StorageService {
   static Future<List<Account>> getAccounts() async {
     final prefs = await SharedPreferences.getInstance();
     List<String> list = prefs.getStringList(KEY_ACCOUNTS) ?? [];
-    return list.map((e) => Account.fromJson(json.decode(e))).toList();
+    
+    List<Account> accounts = [];
+    bool needsMigration = false;
+    List<Account> migratedAccounts = [];
+
+    for (var e in list) {
+      try {
+        final acc = Account.fromJson(json.decode(e));
+        if (acc.password.isNotEmpty) {
+          // Legacy account with password in SharedPreferences. Let's migrate it.
+          final pwdKey = _getPasswordKey(acc.url, acc.username);
+          await _secureStorage.write(key: pwdKey, value: acc.password);
+          
+          accounts.add(acc);
+          
+          // Add to migrated list (without password)
+          migratedAccounts.add(Account(
+            name: acc.name,
+            url: acc.url,
+            username: acc.username,
+            password: '',
+            type: acc.type,
+          ));
+          needsMigration = true;
+        } else {
+          // Already migrated account. Read password from secure storage.
+          final pwdKey = _getPasswordKey(acc.url, acc.username);
+          final securePassword = await _secureStorage.read(key: pwdKey) ?? '';
+          
+          accounts.add(Account(
+            name: acc.name,
+            url: acc.url,
+            username: acc.username,
+            password: securePassword,
+            type: acc.type,
+          ));
+          migratedAccounts.add(acc);
+        }
+      } catch (err) {
+        print("Error decoding account in getAccounts: $err");
+      }
+    }
+
+    if (needsMigration) {
+      final List<String> encoded = migratedAccounts.map((a) => json.encode(a.toJson())).toList();
+      await prefs.setStringList(KEY_ACCOUNTS, encoded);
+      print("IPTV accounts migrated to Secure Storage successfully.");
+    }
+
+    return accounts;
   }
 
   static Future<void> setActiveAccount(Account account) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(KEY_ACTIVE_ACCOUNT, json.encode(account.toJson()));
+    
+    // Also save password securely (just in case)
+    if (account.password.isNotEmpty) {
+      final pwdKey = _getPasswordKey(account.url, account.username);
+      await _secureStorage.write(key: pwdKey, value: account.password);
+    }
+
+    final accountWithoutPassword = Account(
+      name: account.name,
+      url: account.url,
+      username: account.username,
+      password: '', // Do NOT store password in SharedPreferences
+      type: account.type,
+    );
+
+    await prefs.setString(KEY_ACTIVE_ACCOUNT, json.encode(accountWithoutPassword.toJson()));
   }
 
   static Future<Account?> getActiveAccount() async {
@@ -36,7 +124,35 @@ class StorageService {
     final String? raw = prefs.getString(KEY_ACTIVE_ACCOUNT);
     if (raw != null) {
       try {
-        return Account.fromJson(json.decode(raw));
+        final acc = Account.fromJson(json.decode(raw));
+        if (acc.password.isNotEmpty) {
+          // Legacy active account with password in SharedPreferences. Let's migrate it.
+          final pwdKey = _getPasswordKey(acc.url, acc.username);
+          await _secureStorage.write(key: pwdKey, value: acc.password);
+          
+          // Re-save active account without password
+          final migratedActive = Account(
+            name: acc.name,
+            url: acc.url,
+            username: acc.username,
+            password: '',
+            type: acc.type,
+          );
+          await prefs.setString(KEY_ACTIVE_ACCOUNT, json.encode(migratedActive.toJson()));
+          return acc; // Return with password still populated for immediate use
+        } else {
+          // Already migrated account. Read password from secure storage.
+          final pwdKey = _getPasswordKey(acc.url, acc.username);
+          final securePassword = await _secureStorage.read(key: pwdKey) ?? '';
+          
+          return Account(
+            name: acc.name,
+            url: acc.url,
+            username: acc.username,
+            password: securePassword,
+            type: acc.type,
+          );
+        }
       } catch (e) {
         print("Error decoding account: $e");
         return null;
@@ -82,6 +198,10 @@ class StorageService {
       return acc.url == account.url && acc.username == account.username;
     });
     await prefs.setStringList(KEY_ACCOUNTS, accounts);
+
+    // Delete password from secure storage
+    final pwdKey = _getPasswordKey(account.url, account.username);
+    await _secureStorage.delete(key: pwdKey);
 
     // Si la cuenta eliminada era la activa, limpiarla
     final String? activeRaw = prefs.getString(KEY_ACTIVE_ACCOUNT);
