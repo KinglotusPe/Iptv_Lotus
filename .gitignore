@@ -31,3 +31,5 @@ env/
 # Keystores and Certificates
 *.jks
 *.keystore
+*base64.txt
+key_base64.txt
