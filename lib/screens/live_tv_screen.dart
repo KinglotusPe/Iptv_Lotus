@@ -87,7 +87,7 @@ class _LiveTvScreenState extends State<LiveTvScreen> {
           channels = results[0] as List<Channel>;
           catMap = results[1] as Map<String, String>;
         } else {
-          final response = await http.get(Uri.parse(_account!.url)).timeout(const Duration(seconds: 25));
+          final response = await http.get(Uri.parse(_account!.url), headers: {'User-Agent': 'IPTVSmarters'}).timeout(const Duration(seconds: 25));
           if (response.statusCode == 200) {
             channels = await compute(ApiService.parseM3u, response.body);
           } else {

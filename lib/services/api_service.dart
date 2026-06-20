@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import '../models/data_models.dart';
 
 class ApiService {
+  static const Map<String, String> headers = {'User-Agent': 'IPTVSmarters'};
   
   // --- M3U Logic ---
   static List<Channel> parseM3u(String content) {
@@ -67,7 +68,7 @@ class ApiService {
       }
 
       final uri = Uri.parse("$cleanUrl/player_api.php?username=$username&password=$password");
-      final response = await http.get(uri).timeout(const Duration(seconds: 10));
+      final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 10));
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -85,7 +86,7 @@ class ApiService {
   static Future<List<Channel>> getXtreamLive(String url, String username, String password) async {
     try {
       final uri = Uri.parse("$url/player_api.php?username=$username&password=$password&action=get_live_streams");
-      final response = await http.get(uri).timeout(const Duration(seconds: 15));
+      final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 15));
       
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
@@ -107,7 +108,7 @@ class ApiService {
   static Future<List<Channel>> getXtreamVod(String url, String username, String password) async {
     try {
       final uri = Uri.parse("$url/player_api.php?username=$username&password=$password&action=get_vod_streams");
-      final response = await http.get(uri).timeout(const Duration(seconds: 15));
+      final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 15));
       
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
@@ -133,7 +134,7 @@ class ApiService {
   static Future<List<Channel>> getXtreamSeries(String url, String username, String password) async {
     try {
       final uri = Uri.parse("$url/player_api.php?username=$username&password=$password&action=get_series");
-      final response = await http.get(uri).timeout(const Duration(seconds: 15));
+      final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 15));
       
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
@@ -155,7 +156,7 @@ class ApiService {
   static Future<Map<String, String>> getXtreamCategories(String url, String username, String password) async {
     try {
       final uri = Uri.parse("$url/player_api.php?username=$username&password=$password&action=get_live_categories");
-      final response = await http.get(uri).timeout(const Duration(seconds: 10));
+      final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 10));
       
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
@@ -179,7 +180,7 @@ class ApiService {
   static Future<Map<String, String>> getXtreamVodCategories(String url, String username, String password) async {
     try {
       final uri = Uri.parse("$url/player_api.php?username=$username&password=$password&action=get_vod_categories");
-      final response = await http.get(uri).timeout(const Duration(seconds: 10));
+      final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 10));
       
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
@@ -203,7 +204,7 @@ class ApiService {
   static Future<Map<String, String>> getXtreamSeriesCategories(String url, String username, String password) async {
     try {
       final uri = Uri.parse("$url/player_api.php?username=$username&password=$password&action=get_series_categories");
-      final response = await http.get(uri).timeout(const Duration(seconds: 10));
+      final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 10));
       
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
@@ -227,7 +228,7 @@ class ApiService {
   static Future<List<Channel>> getXtreamSeriesEpisodes(String url, String username, String password, String seriesId) async {
     try {
       final uri = Uri.parse("$url/player_api.php?username=$username&password=$password&action=get_series_info&series_id=$seriesId");
-      final response = await http.get(uri).timeout(const Duration(seconds: 15));
+      final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 15));
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -270,7 +271,7 @@ class ApiService {
   static Future<List<EpgProgram>> getXtreamShortEpg(String url, String username, String password, String streamId) async {
     try {
       final uri = Uri.parse("$url/player_api.php?username=$username&password=$password&action=get_short_epg&stream_id=$streamId");
-      final response = await http.get(uri).timeout(const Duration(seconds: 10));
+      final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 10));
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
