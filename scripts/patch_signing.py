@@ -10,13 +10,41 @@ def patch_signing():
         print(f"Error: Gradle file not found at {gradle_path}")
         exit(1)
 
-    # 1. Copy keystore file
-    if os.path.exists(keystore_src):
+    # 1. Handle keystore file
+    keystore_base64 = os.environ.get("KEYSTORE_BASE64")
+    if keystore_base64:
+        import base64
+        try:
+            with open(keystore_dst, "wb") as f:
+                f.write(base64.b64decode(keystore_base64))
+            print("Decoded KEYSTORE_BASE64 environment variable to android/app/key.jks")
+        except Exception as e:
+            print(f"Error decoding KEYSTORE_BASE64: {e}")
+            exit(1)
+    elif os.path.exists(keystore_src):
         shutil.copy(keystore_src, keystore_dst)
         print("Copied key.jks to android/app/")
     else:
-        print(f"Error: Source keystore not found at {keystore_src}")
-        exit(1)
+        print("Source keystore not found at scripts/key.jks and KEYSTORE_BASE64 not set.")
+        print("Generating a temporary keystore on-the-fly for build success...")
+        import subprocess
+        cmd = [
+            "keytool", "-genkey", "-v",
+            "-keystore", keystore_dst,
+            "-keyalg", "RSA",
+            "-keysize", "2048",
+            "-validity", "10000",
+            "-alias", "lotusplay",
+            "-storepass", "lotusplay123",
+            "-keypass", "lotusplay123",
+            "-dname", "CN=LotusPlay, OU=LotusPlay, O=LotusPlay, L=LotusPlay, S=LotusPlay, C=US"
+        ]
+        try:
+            subprocess.run(cmd, check=True)
+            print("Successfully generated temporary key.jks at android/app/")
+        except Exception as e:
+            print(f"Failed to generate temporary keystore: {e}")
+            exit(1)
 
     # 2. Read build.gradle
     with open(gradle_path, "r", encoding="utf-8") as f:
